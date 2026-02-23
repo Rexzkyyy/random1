@@ -1,21 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  Activity, 
   User, 
   ChevronDown, 
-  AlertCircle, 
-  CheckCircle2, 
-  MousePointer2, 
   Monitor, 
   Armchair, 
   ArrowRight,
-  Info,
   Thermometer, 
   ShieldCheck,
   Zap,
   BarChart3
-} from 'lucide-react';
-
+} from 'lucide-react'; 
 const App = () => {
   const [scrollY, setScrollY] = useState(0);
   const [isVisible, setIsVisible] = useState(false);
