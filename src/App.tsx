@@ -65,7 +65,7 @@ const App = () => {
   const center = 150;
   const radius = 100;
 
-  const getPoint = (score, index, total) => {
+ const getPoint = (score: number, index: number, total: number) => { 
     const angle = (Math.PI * 2 * index) / total - Math.PI / 2;
     const r = (score / maxScore) * radius;
     return {
@@ -219,7 +219,7 @@ const App = () => {
                   />
                 ))}
                 {/* Axis Lines */}
-                {radarLabels.map((label, i) => {
+               {radarLabels.map((_, i) => {
                   const p = getPoint(maxScore, i, radarLabels.length);
                   return (
                     <line
