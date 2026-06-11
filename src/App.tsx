@@ -333,7 +333,7 @@ const App = () => {
             </div>
             <div>
               <span className="font-bold text-white tracking-widest text-sm uppercase">DellCare Sultra</span>
-              <span className="text-[9px] text-emerald-400 font-mono block leading-none tracking-widest">BPS SULTAWESI TENGGARA</span>
+              <span className="text-[9px] text-emerald-400 font-mono block leading-none tracking-widest uppercase">Prov sulawesi tenggara Proker Analisis Kesehatan Masyarakat Magang Hub Batch 3 BPS Provinsi Sultra</span>
             </div>
           </div>
         </header>
@@ -359,7 +359,7 @@ const App = () => {
             </p>
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-[9px] md:text-xs text-slate-400 font-mono text-center mb-8">
               <span>🚀</span>
-              <span>Proker Analisis Kesehatan Masyarakat by BPS Provinsi Magang Hub Batch 3 BPS Provinsi Sultra</span>
+              <span>Prov sulawesi tenggara Proker Analisis Kesehatan Masyarakat Magang Hub Batch 3 BPS Provinsi Sultra</span>
             </div>
           </div>
 
@@ -412,7 +412,7 @@ const App = () => {
         <footer className="relative z-10 py-10 text-center text-slate-600 text-xs border-t border-white/5">
           <p>Portal DellCare Sulawesi Tenggara &copy; 2026</p>
           <p className="mt-2 tracking-widest uppercase text-[10px]">Data-Driven Ergonomic Analysis</p>
-          <p className="mt-2 text-slate-700 text-[10px] font-mono">Proker Analisis Kesehatan Masyarakat by BPS Provinsi Magang Hub Batch 3 BPS Provinsi Sultra</p>
+          <p className="mt-2 text-slate-700 text-[10px] font-mono">Prov sulawesi tenggara Proker Analisis Kesehatan Masyarakat Magang Hub Batch 3 BPS Provinsi Sultra</p>
         </footer>
 
       </div>
@@ -1527,7 +1527,7 @@ const App = () => {
       <footer className="relative z-10 py-12 text-center text-slate-600 text-xs border-t border-white/5 mt-12">
         <p>Laporan ini dihasilkan secara otomatis menggunakan Data-Driven Ergonomic Analysis v2.0</p>
         <p className="mt-2 tracking-widest uppercase">Badan Pusat Statistik Sulawesi Tenggara &copy; 2026</p>
-        <p className="mt-2 text-slate-700 text-[10px] font-mono">Proker Analisis Kesehatan Masyarakat by BPS Provinsi Magang Hub Batch 3 BPS Provinsi Sultra</p>
+        <p className="mt-2 text-slate-700 text-[10px] font-mono">Prov sulawesi tenggara Proker Analisis Kesehatan Masyarakat Magang Hub Batch 3 BPS Provinsi Sultra</p>
       </footer>
 
     </div>
