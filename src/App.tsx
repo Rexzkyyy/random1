@@ -332,7 +332,7 @@ const App = () => {
               <Activity size={20} className="text-black font-black" />
             </div>
             <div>
-              <span className="font-bold text-white tracking-widest text-sm uppercase">EKySehat Sultra</span>
+              <span className="font-bold text-white tracking-widest text-sm uppercase">DellCare Sultra</span>
               <span className="text-[9px] text-emerald-400 font-mono block leading-none tracking-widest">BPS SULTAWESI TENGGARA</span>
             </div>
           </div>
@@ -348,12 +348,19 @@ const App = () => {
               </span>
               <span className="text-[10px] uppercase tracking-[0.3em] font-black text-emerald-400">Ergonomic Health Portal</span>
             </div>
-            <h1 className="text-4xl md:text-7xl font-black tracking-tight mb-6 leading-none italic bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent">
-              EKySehat Portal.
+            <h1 className="text-4xl md:text-7xl font-black tracking-tight mb-4 leading-none italic bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent">
+              DellCare.
             </h1>
-            <p className="text-base text-slate-400 font-light leading-relaxed">
+            <h2 className="text-lg md:text-xl font-bold tracking-tight mb-6 text-emerald-400 font-mono uppercase">
+              Analisis Kondisi Ergonomi Pegawai
+            </h2>
+            <p className="text-base text-slate-400 font-light leading-relaxed mb-6">
               Selamat datang di portal analisis kondisi ergonomi pegawai Badan Pusat Statistik se-Provinsi Sulawesi Tenggara. Pilih lingkup satuan kerja di bawah ini:
             </p>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-[9px] md:text-xs text-slate-400 font-mono text-center mb-8">
+              <span>🚀</span>
+              <span>Proker Analisis Kesehatan Masyarakat by BPS Provinsi Magang Hub Batch 3 BPS Provinsi Sultra</span>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
@@ -403,8 +410,9 @@ const App = () => {
 
         {/* Portal Footer */}
         <footer className="relative z-10 py-10 text-center text-slate-600 text-xs border-t border-white/5">
-          <p>Portal EKySehat Sulawesi Tenggara &copy; 2026</p>
+          <p>Portal DellCare Sulawesi Tenggara &copy; 2026</p>
           <p className="mt-2 tracking-widest uppercase text-[10px]">Data-Driven Ergonomic Analysis</p>
+          <p className="mt-2 text-slate-700 text-[10px] font-mono">Proker Analisis Kesehatan Masyarakat by BPS Provinsi Magang Hub Batch 3 BPS Provinsi Sultra</p>
         </footer>
 
       </div>
@@ -514,7 +522,7 @@ const App = () => {
               </div>
               <div className="hidden xs:block">
                 <span className="font-bold text-white tracking-wider text-xs block">{portalName}</span>
-                <span className="text-[8px] text-emerald-400 font-mono block leading-none uppercase">EKySehat Portal</span>
+                <span className="text-[8px] text-emerald-400 font-mono block leading-none uppercase">DellCare Portal</span>
               </div>
             </div>
           </div>
@@ -1519,6 +1527,7 @@ const App = () => {
       <footer className="relative z-10 py-12 text-center text-slate-600 text-xs border-t border-white/5 mt-12">
         <p>Laporan ini dihasilkan secara otomatis menggunakan Data-Driven Ergonomic Analysis v2.0</p>
         <p className="mt-2 tracking-widest uppercase">Badan Pusat Statistik Sulawesi Tenggara &copy; 2026</p>
+        <p className="mt-2 text-slate-700 text-[10px] font-mono">Proker Analisis Kesehatan Masyarakat by BPS Provinsi Magang Hub Batch 3 BPS Provinsi Sultra</p>
       </footer>
 
     </div>
