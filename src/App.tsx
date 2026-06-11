@@ -4,6 +4,7 @@ import {
   Monitor, 
   Armchair, 
   ArrowRight,
+  ChevronDown,
   Thermometer, 
   ShieldCheck, 
   Zap, 
@@ -158,6 +159,68 @@ const getIconComponent = (iconName: string) => {
   }
 };
 
+// Calculate pain statistics for a specific Satker
+const getSatkerPainStats = (employees: Employee[]) => {
+  const painCounts: Record<string, { total: number; agak: number; sakit: number; sangat: number }> = {};
+  
+  if (employees.length === 0) return [];
+  
+  // Initialize map based on first employee's structure
+  employees[0].titik_sakit.forEach(t => {
+    painCounts[t.area] = { total: 0, agak: 0, sakit: 0, sangat: 0 };
+  });
+  
+  employees.forEach(emp => {
+    emp.titik_sakit.forEach(t => {
+      if (t.score > 0) {
+        if (!painCounts[t.area]) {
+          painCounts[t.area] = { total: 0, agak: 0, sakit: 0, sangat: 0 };
+        }
+        painCounts[t.area].total += 1;
+        if (t.score === 1) painCounts[t.area].agak += 1;
+        else if (t.score === 2) painCounts[t.area].sakit += 1;
+        else if (t.score === 3) painCounts[t.area].sangat += 1;
+      }
+    });
+  });
+  
+  const statsList = Object.entries(painCounts).map(([area, counts]) => {
+    const percentage = employees.length > 0 ? ((counts.total / employees.length) * 100).toFixed(1) : "0.0";
+    return {
+      area,
+      percentage: parseFloat(percentage),
+      total_pained: counts.total,
+      agak_sakit: counts.agak,
+      sakit: counts.sakit,
+      sangat_sakit: counts.sangat
+    };
+  });
+  
+  return statsList.sort((a, b) => b.percentage - a.percentage);
+};
+
+// Calculate risk factor statistics for a specific Satker
+const getSatkerRiskStats = (employees: Employee[]) => {
+  const riskCounts: Record<string, number> = {};
+  
+  employees.forEach(emp => {
+    emp.masalah_utama.forEach(issue => {
+      riskCounts[issue.title] = (riskCounts[issue.title] || 0) + 1;
+    });
+  });
+  
+  const statsList = Object.entries(riskCounts).map(([factor, count]) => {
+    const percentage = employees.length > 0 ? ((count / employees.length) * 100).toFixed(1) : "0.0";
+    return {
+      factor,
+      percentage: parseFloat(percentage),
+      count
+    };
+  });
+  
+  return statsList.sort((a, b) => b.percentage - a.percentage);
+};
+
 const App = () => {
   const [scrollY, setScrollY] = useState(0);
   const [hash, setHash] = useState(window.location.hash);
@@ -165,13 +228,14 @@ const App = () => {
   // Data states
   const [data, setData] = useState<ErgonomicData | null>(null);
   const [loading, setLoading] = useState<boolean>(false);
-  const [currentTab, setCurrentTab] = useState<'personal' | 'provincial'>('personal');
+  const [currentTab, setCurrentTab] = useState<'personal' | 'provincial' | 'satker'>('personal');
   
-  // Search state
+  // Search & Filter state
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showSuggestions, setShowSuggestions] = useState<boolean>(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [showOnlyPained, setShowOnlyPained] = useState<boolean>(false);
+  const [selectedSatker, setSelectedSatker] = useState<string>('');
   
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
@@ -197,6 +261,7 @@ const App = () => {
       setLoading(true);
       setSelectedEmployee(null);
       setSearchQuery('');
+      setCurrentTab('personal');
       fetch('/provinsi_data.json')
         .then(res => res.json())
         .then((jsonData: ErgonomicData) => {
@@ -211,11 +276,18 @@ const App = () => {
       setLoading(true);
       setSelectedEmployee(null);
       setSearchQuery('');
+      setCurrentTab('personal');
       fetch('/kabkota_data.json')
         .then(res => res.json())
         .then((jsonData: ErgonomicData) => {
           setData(jsonData);
           setLoading(false);
+          if (jsonData.employees && jsonData.employees.length > 0) {
+            const satkers = Array.from(new Set(jsonData.employees.map(e => e.satker))).sort();
+            if (satkers.length > 0) {
+              setSelectedSatker(satkers[0]);
+            }
+          }
         })
         .catch(err => {
           console.error("Failed to load Kabkota data:", err);
@@ -261,7 +333,7 @@ const App = () => {
             </div>
             <div>
               <span className="font-bold text-white tracking-widest text-sm uppercase">EKySehat Sultra</span>
-              <span className="text-[9px] text-emerald-400 font-mono block leading-none tracking-widest">BPS SULAWESI TENGGARA</span>
+              <span className="text-[9px] text-emerald-400 font-mono block leading-none tracking-widest">BPS SULTAWESI TENGGARA</span>
             </div>
           </div>
         </header>
@@ -460,6 +532,14 @@ const App = () => {
             >
               <Building2 size={13} /> {isKabkoRoute ? 'Analisis Kabkota' : 'Analisis Provinsi'}
             </button>
+            {isKabkoRoute && (
+              <button 
+                onClick={() => setCurrentTab('satker')}
+                className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all flex items-center gap-2.5 ${currentTab === 'satker' ? 'bg-emerald-500 text-black shadow-md' : 'text-slate-400 hover:text-white'}`}
+              >
+                <Building2 size={13} /> Analisis Per Kabkota
+              </button>
+            )}
           </nav>
 
         </div>
@@ -468,745 +548,970 @@ const App = () => {
       {/* Main Container */}
       <main className="pt-24 min-h-screen relative z-10">
         
-        {currentTab === 'personal' ? (
-          /* TAB 1: PERSONAL REPORT */
-          <>
-            {/* Hero Section & Search Input */}
-            <section className="relative flex flex-col items-center justify-center text-center px-6 pt-12 pb-16">
-              <div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                </span>
-                <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-emerald-400">Personal Health Analytics</span>
-              </div>
-              
-              <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4 bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent italic leading-tight uppercase">
-                Laporan {isKabkoRoute ? 'Kabkota' : 'Provinsi'}.
-              </h1>
-              
-              <p className="text-sm md:text-base text-slate-400 max-w-xl mx-auto font-light mb-8">
-                Cari nama pegawai {isKabkoRoute ? 'BPS Kabupaten/Kota' : 'BPS Provinsi Sultra'} untuk memuat hasil survei ergonomi personal.
-              </p>
-
-              {/* Search Box */}
-              <div className="w-full max-w-lg relative" ref={suggestionsRef}>
-                <div className="relative group">
-                  <div className="absolute inset-0 bg-emerald-500/10 rounded-2xl blur-md group-hover:bg-emerald-500/20 transition-all pointer-events-none" />
-                  <div className="relative flex items-center bg-white/5 border border-white/10 rounded-2xl p-1 backdrop-blur-md focus-within:border-emerald-500/50 transition-all">
-                    <Search className="text-slate-500 ml-4 mr-2" size={18} />
-                    <input 
-                      type="text"
-                      placeholder="Ketik nama pegawai..."
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setShowSuggestions(true);
-                      }}
-                      onFocus={() => setShowSuggestions(true)}
-                      className="w-full bg-transparent border-none outline-none py-3 pr-4 text-sm text-white placeholder-slate-500"
-                    />
-                    {searchQuery && (
-                      <button 
-                        onClick={() => {
-                          setSearchQuery('');
-                          setShowSuggestions(false);
-                        }}
-                        className="p-2 hover:bg-white/5 rounded-xl text-slate-400 hover:text-white transition-all mr-1"
-                      >
-                        <X size={16} />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Suggestions Dropdown */}
-                {showSuggestions && (
-                  <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl bg-black/90 border border-white/10 shadow-2xl backdrop-blur-xl max-h-80 overflow-y-auto z-40 text-left divide-y divide-white/5">
-                    {filteredSuggestions.length > 0 ? (
-                      filteredSuggestions.map((emp, i) => (
-                        <button
-                          key={i}
-                          onClick={() => {
-                            setSelectedEmployee(emp);
-                            setSearchQuery(emp.nama);
-                            setShowSuggestions(false);
-                          }}
-                          className="w-full px-5 py-3.5 hover:bg-white/5 flex items-center justify-between transition-all group"
-                        >
-                          <div>
-                            <div className="text-sm font-bold text-slate-200 group-hover:text-emerald-400 transition-colors">{emp.nama}</div>
-                            <div className="text-[10px] font-mono text-slate-500 uppercase mt-0.5">
-                              {isKabkoRoute ? emp.satker : emp.bagian} &bull; {emp.usia}
-                            </div>
-                          </div>
-                          <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${emp.rosa_category === 'Risiko Tinggi' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                            {emp.rosa_category}
-                          </div>
-                        </button>
-                      ))
-                    ) : (
-                      <div className="px-5 py-4 text-xs text-slate-500 text-center font-mono">
-                        Tidak ada pegawai dengan nama "{searchQuery}"
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            </section>
-
-            {selectedEmployee ? (
-              /* INDIVIDUAL ERGONOMIC REPORT CONTENT */
+        {(() => {
+          if (currentTab === 'personal') {
+            return (
+              /* TAB 1: PERSONAL REPORT */
               <>
-                {/* Employee Info Header */}
-                <section className="relative z-10 max-w-5xl mx-auto px-6 mb-8">
-                  <div className="p-6 md:p-8 rounded-[2rem] bg-gradient-to-r from-slate-900 to-black border border-white/5 shadow-2xl flex flex-col md:flex-row items-center md:items-stretch justify-between gap-6">
-                    <div className="flex items-center gap-5">
-                      <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
-                        <User size={32} className="text-black" />
-                      </div>
-                      <div className="text-center md:text-left">
-                        <h2 className="text-2xl md:text-3xl font-black tracking-tight">{selectedEmployee.nama}</h2>
-                        <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
-                          <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-emerald-400 font-mono uppercase">
-                            {isKabkoRoute ? selectedEmployee.satker : `Bagian: ${selectedEmployee.bagian}`}
-                          </span>
-                          {isKabkoRoute && (
-                            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-400 font-mono">
-                              Bagian: {selectedEmployee.bagian}
-                            </span>
-                          )}
-                          <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400">{selectedEmployee.gender}</span>
-                          <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400">{selectedEmployee.usia}</span>
-                        </div>
+                {/* Hero Section & Search Input */}
+                <section className="relative flex flex-col items-center justify-center text-center px-6 pt-12 pb-16">
+                  <div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-emerald-400">Personal Health Analytics</span>
+                  </div>
+                  
+                  <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4 bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent italic leading-tight uppercase">
+                    Laporan {isKabkoRoute ? 'Kabkota' : 'Provinsi'}.
+                  </h1>
+                  
+                  <p className="text-sm md:text-base text-slate-400 max-w-xl mx-auto font-light mb-8">
+                    Cari nama pegawai {isKabkoRoute ? 'BPS Kabupaten/Kota' : 'BPS Provinsi Sultra'} untuk memuat hasil survei ergonomi personal.
+                  </p>
+
+                  {/* Search Box */}
+                  <div className="w-full max-w-lg relative" ref={suggestionsRef}>
+                    <div className="relative group">
+                      <div className="absolute inset-0 bg-emerald-500/10 rounded-2xl blur-md group-hover:bg-emerald-500/20 transition-all pointer-events-none" />
+                      <div className="relative flex items-center bg-white/5 border border-white/10 rounded-2xl p-1 backdrop-blur-md focus-within:border-emerald-500/50 transition-all">
+                        <Search className="text-slate-500 ml-4 mr-2" size={18} />
+                        <input 
+                          type="text"
+                          placeholder="Ketik nama pegawai..."
+                          value={searchQuery}
+                          onChange={(e) => {
+                            setSearchQuery(e.target.value);
+                            setShowSuggestions(true);
+                          }}
+                          onFocus={() => setShowSuggestions(true)}
+                          className="w-full bg-transparent border-none outline-none py-3 pr-4 text-sm text-white placeholder-slate-500"
+                        />
+                        {searchQuery && (
+                          <button 
+                            onClick={() => {
+                              setSearchQuery('');
+                              setShowSuggestions(false);
+                            }}
+                            className="p-2 hover:bg-white/5 rounded-xl text-slate-400 hover:text-white transition-all mr-1"
+                          >
+                            <X size={16} />
+                          </button>
+                        )}
                       </div>
                     </div>
-                    <div className="h-[1px] md:h-auto w-full md:w-[1px] bg-white/5" />
-                    <div className="grid grid-cols-2 gap-4 shrink-0 text-center md:text-left">
-                      <div>
-                        <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Lama Bekerja</div>
-                        <div className="text-base font-bold text-slate-200 mt-0.5">{selectedEmployee.lama_bekerja}</div>
+
+                    {/* Suggestions Dropdown */}
+                    {showSuggestions && (
+                      <div className="absolute top-full left-0 right-0 mt-2 rounded-2xl bg-black/90 border border-white/10 shadow-2xl backdrop-blur-xl max-h-80 overflow-y-auto z-40 text-left divide-y divide-white/5">
+                        {filteredSuggestions.length > 0 ? (
+                          filteredSuggestions.map((emp, i) => (
+                            <button
+                              key={i}
+                              onClick={() => {
+                                setSelectedEmployee(emp);
+                                setSearchQuery(emp.nama);
+                                setShowSuggestions(false);
+                              }}
+                              className="w-full px-5 py-3.5 hover:bg-white/5 flex items-center justify-between transition-all group"
+                            >
+                              <div>
+                                <div className="text-sm font-bold text-slate-200 group-hover:text-emerald-400 transition-colors">{emp.nama}</div>
+                                <div className="text-[10px] font-mono text-slate-500 uppercase mt-0.5">
+                                  {isKabkoRoute ? emp.satker : emp.bagian} &bull; {emp.usia}
+                                </div>
+                              </div>
+                              <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${emp.rosa_category === 'Risiko Tinggi' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                                {emp.rosa_category}
+                              </div>
+                            </button>
+                          ))
+                        ) : (
+                          <div className="px-5 py-4 text-xs text-slate-500 text-center font-mono">
+                            Tidak ada pegawai dengan nama "{searchQuery}"
+                          </div>
+                        )}
                       </div>
-                      <div>
-                        <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Durasi Kerja</div>
-                        <div className="text-base font-bold text-slate-200 mt-0.5">{selectedEmployee.durasi_kerja} / Hari</div>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </section>
 
-                {/* NBM & ROSA score summaries */}
-                <section className="relative z-10 max-w-5xl mx-auto px-6 py-4">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
-                    {/* Nordic Body Map Score Card */}
-                    <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-black border border-white/5 shadow-2xl flex flex-col justify-between relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-emerald-500/10 transition-all" />
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="text-xl font-bold mb-1 text-white">Tingkat Keluhan</h3>
-                          <p className="text-xs text-slate-500">Berdasarkan skor Nordic Body Map</p>
-                        </div>
-                        <ShieldCheck size={24} className="text-emerald-500" />
-                      </div>
-                      
-                      <div className="mt-8 flex items-end gap-3">
-                        <div className="text-6xl font-black text-emerald-500">{selectedEmployee.nbm_score}</div>
-                        <div className="pb-1.5">
-                          <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-500/60">Total Skor</div>
-                          <div className="text-lg font-bold text-white leading-tight">({selectedEmployee.nbm_category})</div>
-                        </div>
-                      </div>
-                      
-                      <p className="mt-6 p-4 rounded-xl bg-white/5 border border-white/5 text-slate-400 italic text-xs leading-relaxed">
-                        Skor NBM diperoleh dari evaluasi subjektif rasa sakit/kaku pada 28 bagian tubuh yang dialami oleh pegawai selama beraktivitas.
-                      </p>
-                    </div>
-
-                    {/* ROSA Score Card */}
-                    <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-black border border-white/5 shadow-2xl flex flex-col justify-between relative overflow-hidden group">
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-rose-500/10 transition-all" />
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="text-xl font-bold mb-1 text-white">Level Risiko</h3>
-                          <p className="text-xs text-slate-500">Berdasarkan skor Rapid Office Strain Assessment</p>
-                        </div>
-                        <ShieldCheck size={24} className={selectedEmployee.rosa_score >= 5 ? 'text-rose-500' : 'text-amber-500'} />
-                      </div>
-                      
-                      <div className="mt-8 flex items-end gap-3">
-                        <div className={`text-6xl font-black ${selectedEmployee.rosa_score >= 5 ? 'text-rose-500' : 'text-amber-500'}`}>
-                          {selectedEmployee.rosa_score}
-                        </div>
-                        <div className="pb-1.5">
-                          <div className={`text-[9px] font-bold uppercase tracking-widest ${selectedEmployee.rosa_score >= 5 ? 'text-rose-500/60' : 'text-amber-500/60'}`}>Total Skor ROSA</div>
-                          <div className="text-lg font-bold text-white leading-tight">({selectedEmployee.rosa_category})</div>
-                        </div>
-                      </div>
-                      
-                      <p className="mt-6 p-4 rounded-xl bg-white/5 border border-white/5 text-slate-400 italic text-xs leading-relaxed">
-                        Skor ROSA ≥ 5 menunjukkan lingkungan kerja Anda tidak aman dan memiliki risiko ergonomi tinggi. Dibutuhkan intervensi/perubahan fasilitas segera.
-                      </p>
-                    </div>
-
-                  </div>
-                </section>
-
-                {/* Radar Chart & Major Pain Groups */}
-                <section className="relative z-10 max-w-5xl mx-auto px-6 py-8">
-                  <div className="bg-slate-900/30 border border-white/5 rounded-[3rem] p-8 md:p-12 overflow-hidden relative">
-                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-                      
-                      <div className="lg:col-span-7">
-                        <div className="inline-flex items-center gap-2 mb-4 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-bold tracking-widest uppercase">
-                          <BarChart3 size={12} /> Peta Distribusi Keluhan
-                        </div>
-                        <h3 className="text-3xl font-bold mb-4 tracking-tight">Kondisi Area Tubuh</h3>
-                        <p className="text-slate-400 mb-8 leading-relaxed text-sm">
-                          Berdasarkan pengelompokan 28 titik Nordic Body Map ke dalam 5 bagian utama tubuh untuk mendeteksi area paling rentan mengalami cedera.
-                        </p>
-                        
-                        <div className="space-y-4">
-                          {groupedPain.map((item, idx) => (
-                            <div key={idx} className="space-y-1.5">
-                              <div className="flex justify-between items-center text-xs">
-                                <span className="font-bold text-slate-300 flex items-center gap-1.5">
-                                  <span>{item.icon}</span> {item.area}
+                {selectedEmployee ? (
+                  /* INDIVIDUAL ERGONOMIC REPORT CONTENT */
+                  <>
+                    {/* Employee Info Header */}
+                    <section className="relative z-10 max-w-5xl mx-auto px-6 mb-8">
+                      <div className="p-6 md:p-8 rounded-[2rem] bg-gradient-to-r from-slate-900 to-black border border-white/5 shadow-2xl flex flex-col md:flex-row items-center md:items-stretch justify-between gap-6">
+                        <div className="flex items-center gap-5">
+                          <div className="w-16 h-16 rounded-2xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+                            <User size={32} className="text-black" />
+                          </div>
+                          <div className="text-center md:text-left">
+                            <h2 className="text-2xl md:text-3xl font-black tracking-tight">{selectedEmployee.nama}</h2>
+                            <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
+                              <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-emerald-400 font-mono uppercase">
+                                {isKabkoRoute ? selectedEmployee.satker : `Bagian: ${selectedEmployee.bagian}`}
+                              </span>
+                              {isKabkoRoute && (
+                                <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-400 font-mono">
+                                  Bagian: {selectedEmployee.bagian}
                                 </span>
-                                <span className={`font-semibold ${item.score === 3 ? 'text-rose-400' : item.score === 2 ? 'text-amber-400' : item.score === 1 ? 'text-yellow-400' : 'text-slate-500'}`}>
-                                  {item.level} ({item.score}/3)
-                                </span>
-                              </div>
-                              <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                                <div 
-                                  className={`h-full bg-gradient-to-r ${item.score === 3 ? 'from-rose-600 to-rose-400' : item.score === 2 ? 'from-amber-500 to-amber-300' : item.score === 1 ? 'from-yellow-400 to-yellow-200' : 'from-slate-700 to-slate-500'}`} 
-                                  style={{ width: `${(item.score / maxScore) * 100}%`, transition: 'width 1.5s ease-out' }} 
-                                />
-                              </div>
+                              )}
+                              <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400">{selectedEmployee.gender}</span>
+                              <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400">{selectedEmployee.usia}</span>
                             </div>
-                          ))}
+                          </div>
+                        </div>
+                        <div className="h-[1px] md:h-auto w-full md:w-[1px] bg-white/5" />
+                        <div className="grid grid-cols-2 gap-4 shrink-0 text-center md:text-left">
+                          <div>
+                            <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Lama Bekerja</div>
+                            <div className="text-base font-bold text-slate-200 mt-0.5">{selectedEmployee.lama_bekerja}</div>
+                          </div>
+                          <div>
+                            <div className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Durasi Kerja</div>
+                            <div className="text-base font-bold text-slate-200 mt-0.5">{selectedEmployee.durasi_kerja} / Hari</div>
+                          </div>
                         </div>
                       </div>
+                    </section>
 
-                      <div className="lg:col-span-5 flex justify-center">
-                        {/* Radar Chart SVG */}
-                        <div className="relative">
-                          <svg width="280" height="280" viewBox="0 0 300 300" className="drop-shadow-[0_0_20px_rgba(16,185,129,0.15)]">
-                            {/* Background Circles */}
-                            {[0.33, 0.66, 1].map((step, i) => (
-                              <circle
-                                key={i}
-                                cx={center}
-                                cy={center}
-                                r={radius * step}
-                                fill="none"
-                                stroke="rgba(255,255,255,0.05)"
-                                strokeDasharray="4 4"
-                              />
-                            ))}
-                            {/* Axis Lines */}
-                            {radarLabels.map((_, i) => {
-                              const p = getPoint(maxScore, i, radarLabels.length);
-                              return (
-                                <line
-                                  key={i}
-                                  x1={center}
-                                  y1={center}
-                                  x2={p.x}
-                                  y2={p.y}
-                                  stroke="rgba(255,255,255,0.05)"
-                                />
-                              );
-                            })}
-                            {/* Data Path */}
-                            {radarPath && (
-                              <path
-                                  d={radarPath}
-                                  fill="rgba(16,185,129,0.15)"
-                                  stroke="#10b981"
-                                  strokeWidth="2.5"
-                                  className="transition-all duration-1000"
-                              />
-                            )}
-                            {/* Points */}
-                            {radarScores.map((score, i) => {
-                              const p = getPoint(score, i, radarScores.length);
-                              return (
-                                <circle
-                                  key={i}
-                                  cx={p.x}
-                                  cy={p.y}
-                                  r="4"
-                                  fill="#10b981"
-                                  className="hover:r-6 transition-all"
-                                />
-                              );
-                            })}
-                            {/* Labels */}
-                            {radarLabels.map((label, i) => {
-                              const p = getPoint(maxScore + 0.35, i, radarLabels.length);
-                              return (
-                                <text
-                                  key={i}
-                                  x={p.x}
-                                  y={p.y}
-                                  fill="rgba(255,255,255,0.4)"
-                                  fontSize="9"
-                                  fontWeight="bold"
-                                  textAnchor="middle"
-                                  className="uppercase tracking-tighter"
-                                >
-                                  {label}
-                                </text>
-                              );
-                            })}
-                          </svg>
+                    {/* NBM & ROSA score summaries */}
+                    <section className="relative z-10 max-w-5xl mx-auto px-6 py-4">
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        
+                        {/* Nordic Body Map Score Card */}
+                        <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-black border border-white/5 shadow-2xl flex flex-col justify-between relative overflow-hidden group">
+                          <div className="absolute top-0 right-0 w-24 h-24 bg-emerald-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-emerald-500/10 transition-all" />
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="text-xl font-bold mb-1 text-white">Tingkat Keluhan</h3>
+                              <p className="text-xs text-slate-500">Berdasarkan skor Nordic Body Map</p>
+                            </div>
+                            <ShieldCheck size={24} className="text-emerald-500" />
+                          </div>
+                          
+                          <div className="mt-8 flex items-end gap-3">
+                            <div className="text-6xl font-black text-emerald-500">{selectedEmployee.nbm_score}</div>
+                            <div className="pb-1.5">
+                              <div className="text-[9px] font-bold uppercase tracking-widest text-emerald-500/60">Total Skor</div>
+                              <div className="text-lg font-bold text-white leading-tight">({selectedEmployee.nbm_category})</div>
+                            </div>
+                          </div>
+                          
+                          <p className="mt-6 p-4 rounded-xl bg-white/5 border border-white/5 text-slate-400 italic text-xs leading-relaxed">
+                            Skor NBM diperoleh dari evaluasi subjektif rasa sakit/kaku pada 28 bagian tubuh yang dialami oleh pegawai selama beraktivitas.
+                          </p>
                         </div>
-                      </div>
 
-                    </div>
-                  </div>
-                </section>
+                        {/* ROSA Score Card */}
+                        <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-slate-900 to-black border border-white/5 shadow-2xl flex flex-col justify-between relative overflow-hidden group">
+                          <div className="absolute top-0 right-0 w-24 h-24 bg-rose-500/5 rounded-full blur-xl pointer-events-none group-hover:bg-rose-500/10 transition-all" />
+                          <div className="flex justify-between items-start">
+                            <div>
+                              <h3 className="text-xl font-bold mb-1 text-white">Level Risiko</h3>
+                              <p className="text-xs text-slate-500">Berdasarkan skor Rapid Office Strain Assessment</p>
+                            </div>
+                            <ShieldCheck size={24} className={selectedEmployee.rosa_score >= 5 ? 'text-rose-500' : 'text-amber-500'} />
+                          </div>
+                          
+                          <div className="mt-8 flex items-end gap-3">
+                            <div className={`text-6xl font-black ${selectedEmployee.rosa_score >= 5 ? 'text-rose-500' : 'text-amber-500'}`}>
+                              {selectedEmployee.rosa_score}
+                            </div>
+                            <div className="pb-1.5">
+                              <div className={`text-[9px] font-bold uppercase tracking-widest ${selectedEmployee.rosa_score >= 5 ? 'text-rose-500/60' : 'text-amber-500/60'}`}>Total Skor ROSA</div>
+                              <div className="text-lg font-bold text-white leading-tight">({selectedEmployee.rosa_category})</div>
+                            </div>
+                          </div>
+                          
+                          <p className="mt-6 p-4 rounded-xl bg-white/5 border border-white/5 text-slate-400 italic text-xs leading-relaxed">
+                            Skor ROSA ≥ 5 menunjukkan lingkungan kerja Anda tidak aman dan memiliki risiko ergonomi tinggi. Dibutuhkan intervensi/perubahan fasilitas segera.
+                          </p>
+                        </div>
 
-                {/* Nordic Body Map 28-point details */}
-                <section className="relative z-10 max-w-5xl mx-auto px-6 py-4">
-                  <div className="p-8 md:p-10 rounded-[2.5rem] bg-gradient-to-b from-slate-900 to-black border border-white/5">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-                      <div>
-                        <h3 className="text-2xl font-bold">Rincian 28 Titik Keluhan Tubuh (NBM)</h3>
-                        <p className="text-xs text-slate-500 mt-1">Status dan detail rasa sakit pada setiap area yang dipetakan secara objektif.</p>
                       </div>
-                      
-                      <button 
-                        onClick={() => setShowOnlyPained(!showOnlyPained)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${showOnlyPained ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-transparent text-slate-400 border-white/10 hover:text-white'}`}
-                      >
-                        {showOnlyPained ? "Tampilkan Semua Titik" : "Tampilkan Titik Sakit Saja"}
-                      </button>
-                    </div>
+                    </section>
 
-                    {activePainPoints.length === 0 ? (
-                      <div className="p-10 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 text-center flex flex-col items-center gap-3">
-                        <CheckCircle2 size={40} className="text-emerald-500" />
-                        <h4 className="text-lg font-bold text-emerald-400">Kondisi Tubuh Sempurna</h4>
-                        <p className="text-xs text-slate-400 max-w-md">Luar biasa! Pegawai tidak melaporkan adanya keluhan rasa sakit atau kaku pada 28 bagian tubuh. Pertahankan postur kerja Anda.</p>
-                      </div>
-                    ) : (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-                        {selectedEmployee.titik_sakit
-                          .filter(t => !showOnlyPained || t.score > 0)
-                          .map((item, idx) => {
-                            let badgeStyle = "bg-slate-800/50 text-slate-400 border-white/5";
-                            if (item.score === 1) badgeStyle = "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
-                            else if (item.score === 2) badgeStyle = "bg-amber-500/10 text-amber-400 border-amber-500/20";
-                            else if (item.score === 3) badgeStyle = "bg-rose-500/10 text-rose-400 border-rose-500/20";
+                    {/* Radar Chart & Major Pain Groups */}
+                    <section className="relative z-10 max-w-5xl mx-auto px-6 py-8">
+                      <div className="bg-slate-900/30 border border-white/5 rounded-[3rem] p-8 md:p-12 overflow-hidden relative">
+                        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+                          
+                          <div className="lg:col-span-7">
+                            <div className="inline-flex items-center gap-2 mb-4 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-bold tracking-widest uppercase">
+                              <BarChart3 size={12} /> Peta Distribusi Keluhan
+                            </div>
+                            <h3 className="text-3xl font-bold mb-4 tracking-tight">Kondisi Area Tubuh</h3>
+                            <p className="text-slate-400 mb-8 leading-relaxed text-sm">
+                              Berdasarkan pengelompokan 28 titik Nordic Body Map ke dalam 5 bagian utama tubuh untuk mendeteksi area paling rentan mengalami cedera.
+                            </p>
                             
-                            return (
-                              <div 
-                                key={idx} 
-                                className={`p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between gap-3 ${item.score > 0 ? 'hover:border-emerald-500/20 transition-all' : ''}`}
-                              >
-                                <div className="flex items-center gap-3">
-                                  <span className="text-xl">{item.icon}</span>
-                                  <div>
-                                    <div className="text-xs font-bold text-slate-200">{item.area}</div>
-                                    <div className="text-[10px] text-slate-500 font-mono mt-0.5">NBM #{idx}</div>
+                            <div className="space-y-4">
+                              {groupedPain.map((item, idx) => (
+                                <div key={idx} className="space-y-1.5">
+                                  <div className="flex justify-between items-center text-xs">
+                                    <span className="font-bold text-slate-300 flex items-center gap-1.5">
+                                      <span>{item.icon}</span> {item.area}
+                                    </span>
+                                    <span className={`font-semibold ${item.score === 3 ? 'text-rose-400' : item.score === 2 ? 'text-amber-400' : item.score === 1 ? 'text-yellow-400' : 'text-slate-500'}`}>
+                                      {item.level} ({item.score}/3)
+                                    </span>
+                                  </div>
+                                  <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                                    <div 
+                                      className={`h-full bg-gradient-to-r ${item.score === 3 ? 'from-rose-600 to-rose-400' : item.score === 2 ? 'from-amber-500 to-amber-300' : item.score === 1 ? 'from-yellow-400 to-yellow-200' : 'from-slate-700 to-slate-500'}`} 
+                                      style={{ width: `${(item.score / maxScore) * 100}%`, transition: 'width 1.5s ease-out' }} 
+                                    />
                                   </div>
                                 </div>
-                                <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase border shrink-0 ${badgeStyle}`}>
-                                  {item.level}
-                                </span>
-                              </div>
-                            );
-                          })}
-                      </div>
-                    )}
-                  </div>
-                </section>
-
-                {/* Major Workstation Setup Issues & Solutions */}
-                <section className="relative z-10 max-w-5xl mx-auto px-6 py-8">
-                  <div className="p-8 md:p-12 bg-emerald-500/5 rounded-[4rem] border border-emerald-500/10">
-                    <div className="flex items-center gap-3 mb-8">
-                      <Monitor className="text-emerald-500" />
-                      <h3 className="text-2xl font-bold">Faktor Risiko Workstation & Solusi</h3>
-                    </div>
-
-                    {selectedEmployee.masalah_utama && selectedEmployee.masalah_utama.length > 0 ? (
-                      <div className="space-y-4">
-                        {selectedEmployee.masalah_utama.map((item, idx) => (
-                          <div key={idx} className="group grid grid-cols-1 md:grid-cols-12 items-center gap-6 p-6 rounded-3xl bg-black/40 border border-white/5 hover:bg-black/60 transition-all">
-                            <div className="md:col-span-1 flex justify-center">
-                              <div className="p-3 bg-white/5 rounded-2xl">
-                                {getIconComponent(item.icon)}
-                              </div>
-                            </div>
-                            <div className="md:col-span-6">
-                              <h4 className="text-lg font-bold mb-1 text-white group-hover:text-emerald-400 transition-colors">{item.title}</h4>
-                              <p className="text-xs text-slate-400">{item.desc}</p>
-                            </div>
-                            <div className="md:col-span-5 p-4 rounded-xl bg-white/5 border border-white/5">
-                              <div className="text-[9px] uppercase font-bold text-rose-400 mb-1">Dampak Kesehatan</div>
-                              <div className="text-xs font-medium text-slate-200 leading-snug">{item.impact}</div>
+                              ))}
                             </div>
                           </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-6 rounded-3xl bg-black/40 border border-white/5 text-center text-slate-400 text-xs">
-                        Tidak ada faktor risiko tinggi terdeteksi dari tata letak ruang kerja Anda.
-                      </div>
-                    )}
 
-                    <div className="mt-8 p-5 bg-black/20 border border-emerald-500/10 rounded-2xl">
-                      <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
-                        <CheckCircle2 size={16} className="text-emerald-500" /> Tips Ergonomi Umum Harian
-                      </h4>
-                      <ul className="text-xs text-slate-400 space-y-2 list-disc list-inside">
-                        <li>Lakukan peregangan otot (stretching) selama 2 menit setiap 2 jam bekerja.</li>
-                        <li>Atur posisi duduk agar siku membentuk sudut 90 derajat sejajar permukaan meja.</li>
-                        <li>Gunakan bantal penyangga pinggang tambahan di kursi jika posisi kursi terlalu merebah.</li>
-                      </ul>
+                          <div className="lg:col-span-5 flex justify-center">
+                            {/* Radar Chart SVG */}
+                            <div className="relative">
+                              <svg width="280" height="280" viewBox="0 0 300 300" className="drop-shadow-[0_0_20px_rgba(16,185,129,0.15)]">
+                                {/* Background Circles */}
+                                {[0.33, 0.66, 1].map((step, i) => (
+                                  <circle
+                                    key={i}
+                                    cx={center}
+                                    cy={center}
+                                    r={radius * step}
+                                    fill="none"
+                                    stroke="rgba(255,255,255,0.05)"
+                                    strokeDasharray="4 4"
+                                  />
+                                ))}
+                                {/* Axis Lines */}
+                                {radarLabels.map((_, i) => {
+                                  const p = getPoint(maxScore, i, radarLabels.length);
+                                  return (
+                                    <line
+                                      key={i}
+                                      x1={center}
+                                      y1={center}
+                                      x2={p.x}
+                                      y2={p.y}
+                                      stroke="rgba(255,255,255,0.05)"
+                                    />
+                                  );
+                                })}
+                                {/* Data Path */}
+                                {radarPath && (
+                                  <path
+                                      d={radarPath}
+                                      fill="rgba(16,185,129,0.15)"
+                                      stroke="#10b981"
+                                      strokeWidth="2.5"
+                                      className="transition-all duration-1000"
+                                  />
+                                )}
+                                {/* Points */}
+                                {radarScores.map((score, i) => {
+                                  const p = getPoint(score, i, radarScores.length);
+                                  return (
+                                    <circle
+                                      key={i}
+                                      cx={p.x}
+                                      cy={p.y}
+                                      r="4"
+                                      fill="#10b981"
+                                      className="hover:r-6 transition-all"
+                                    />
+                                  );
+                                })}
+                                {/* Labels */}
+                                {radarLabels.map((label, i) => {
+                                  const p = getPoint(maxScore + 0.35, i, radarLabels.length);
+                                  return (
+                                    <text
+                                      key={i}
+                                      x={p.x}
+                                      y={p.y}
+                                      fill="rgba(255,255,255,0.4)"
+                                      fontSize="9"
+                                      fontWeight="bold"
+                                      textAnchor="middle"
+                                      className="uppercase tracking-tighter"
+                                    >
+                                      {label}
+                                    </text>
+                                  );
+                                })}
+                              </svg>
+                            </div>
+                          </div>
+
+                        </div>
+                      </div>
+                    </section>
+
+                    {/* Nordic Body Map 28-point details */}
+                    <section className="relative z-10 max-w-5xl mx-auto px-6 py-4">
+                      <div className="p-8 md:p-10 rounded-[2.5rem] bg-gradient-to-b from-slate-900 to-black border border-white/5">
+                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+                          <div>
+                            <h3 className="text-2xl font-bold">Rincian 28 Titik Keluhan Tubuh (NBM)</h3>
+                            <p className="text-xs text-slate-500 mt-1">Status dan detail rasa sakit pada setiap area yang dipetakan secara objektif.</p>
+                          </div>
+                          
+                          <button 
+                            onClick={() => setShowOnlyPained(!showOnlyPained)}
+                            className={`px-4 py-2 rounded-xl text-xs font-bold transition-all border ${showOnlyPained ? 'bg-emerald-500 text-black border-emerald-500' : 'bg-transparent text-slate-400 border-white/10 hover:text-white'}`}
+                          >
+                            {showOnlyPained ? "Tampilkan Semua Titik" : "Tampilkan Titik Sakit Saja"}
+                          </button>
+                        </div>
+
+                        {activePainPoints.length === 0 ? (
+                          <div className="p-10 rounded-2xl bg-emerald-500/5 border border-emerald-500/10 text-center flex flex-col items-center gap-3">
+                            <CheckCircle2 size={40} className="text-emerald-500" />
+                            <h4 className="text-lg font-bold text-emerald-400">Kondisi Tubuh Sempurna</h4>
+                            <p className="text-xs text-slate-400 max-w-md">Luar biasa! Pegawai tidak melaporkan adanya keluhan rasa sakit atau kaku pada 28 bagian tubuh. Pertahankan postur kerja Anda.</p>
+                          </div>
+                        ) : (
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+                            {selectedEmployee.titik_sakit
+                              .filter(t => !showOnlyPained || t.score > 0)
+                              .map((item, idx) => {
+                                let badgeStyle = "bg-slate-800/50 text-slate-400 border-white/5";
+                                if (item.score === 1) badgeStyle = "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
+                                else if (item.score === 2) badgeStyle = "bg-amber-500/10 text-amber-400 border-amber-500/20";
+                                else if (item.score === 3) badgeStyle = "bg-rose-500/10 text-rose-400 border-rose-500/20";
+                                
+                                return (
+                                  <div 
+                                    key={idx} 
+                                    className={`p-4 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-between gap-3 ${item.score > 0 ? 'hover:border-emerald-500/20 transition-all' : ''}`}
+                                  >
+                                    <div className="flex items-center gap-3">
+                                      <span className="text-xl">{item.icon}</span>
+                                      <div>
+                                        <div className="text-xs font-bold text-slate-200">{item.area}</div>
+                                        <div className="text-[10px] text-slate-500 font-mono mt-0.5">NBM #{idx}</div>
+                                      </div>
+                                    </div>
+                                    <span className={`px-2.5 py-1 rounded-lg text-[9px] font-bold uppercase border shrink-0 ${badgeStyle}`}>
+                                      {item.level}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        )}
+                      </div>
+                    </section>
+
+                    {/* Major Workstation Setup Issues & Solutions */}
+                    <section className="relative z-10 max-w-5xl mx-auto px-6 py-8">
+                      <div className="p-8 md:p-12 bg-emerald-500/5 rounded-[4rem] border border-emerald-500/10">
+                        <div className="flex items-center gap-3 mb-8">
+                          <Monitor className="text-emerald-500" />
+                          <h3 className="text-2xl font-bold">Faktor Risiko Workstation & Solusi</h3>
+                        </div>
+
+                        {selectedEmployee.masalah_utama && selectedEmployee.masalah_utama.length > 0 ? (
+                          <div className="space-y-4">
+                            {selectedEmployee.masalah_utama.map((item, idx) => (
+                              <div key={idx} className="group grid grid-cols-1 md:grid-cols-12 items-center gap-6 p-6 rounded-3xl bg-black/40 border border-white/5 hover:bg-black/60 transition-all">
+                                <div className="md:col-span-1 flex justify-center">
+                                  <div className="p-3 bg-white/5 rounded-2xl">
+                                    {getIconComponent(item.icon)}
+                                  </div>
+                                </div>
+                                <div className="md:col-span-6">
+                                  <h4 className="text-lg font-bold mb-1 text-white group-hover:text-emerald-400 transition-colors">{item.title}</h4>
+                                  <p className="text-xs text-slate-400">{item.desc}</p>
+                                </div>
+                                <div className="md:col-span-5 p-4 rounded-xl bg-white/5 border border-white/5">
+                                  <div className="text-[9px] uppercase font-bold text-rose-400 mb-1">Dampak Kesehatan</div>
+                                  <div className="text-xs font-medium text-slate-200 leading-snug">{item.impact}</div>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-6 rounded-3xl bg-black/40 border border-white/5 text-center text-slate-400 text-xs">
+                            Tidak ada faktor risiko tinggi terdeteksi dari tata letak ruang kerja Anda.
+                          </div>
+                        )}
+
+                        <div className="mt-8 p-5 bg-black/20 border border-emerald-500/10 rounded-2xl">
+                          <h4 className="text-sm font-bold text-white mb-2 flex items-center gap-2">
+                            <CheckCircle2 size={16} className="text-emerald-500" /> Tips Ergonomi Umum Harian
+                          </h4>
+                          <ul className="text-xs text-slate-400 space-y-2 list-disc list-inside">
+                            <li>Lakukan peregangan otot (stretching) selama 2 menit setiap 2 jam bekerja.</li>
+                            <li>Atur posisi duduk agar siku membentuk sudut 90 derajat sejajar permukaan meja.</li>
+                            <li>Gunakan bantal penyangga pinggang tambahan di kursi jika posisi kursi terlalu merebah.</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </section>
+                  </>
+                ) : (
+                  /* NO EMPLOYEE SELECTED (WELCOME STATE) */
+                  <section className="relative z-10 max-w-5xl mx-auto px-6 py-20 text-center">
+                    <div className="p-12 rounded-[3rem] bg-white/5 border border-white/10 backdrop-blur-md">
+                      <User size={64} className="text-slate-600 mx-auto mb-6" />
+                      <h3 className="text-2xl font-bold mb-2">Cari Nama Pegawai</h3>
+                      <p className="text-slate-400 max-w-md mx-auto text-sm">
+                        Gunakan kolom pencarian di atas untuk memasukkan nama pegawai {isKabkoRoute ? 'BPS Kabupaten/Kota' : 'BPS Provinsi Sultra'} dan membuka laporan ergonomi detailnya.
+                      </p>
                     </div>
-                  </div>
-                </section>
+                  </section>
+                )}
               </>
-            ) : (
-              /* NO EMPLOYEE SELECTED (WELCOME STATE) */
-              <section className="relative z-10 max-w-5xl mx-auto px-6 py-20 text-center">
-                <div className="p-12 rounded-[3rem] bg-white/5 border border-white/10 backdrop-blur-md">
-                  <User size={64} className="text-slate-600 mx-auto mb-6" />
-                  <h3 className="text-2xl font-bold mb-2">Cari Nama Pegawai</h3>
-                  <p className="text-slate-400 max-w-md mx-auto text-sm">
-                    Gunakan kolom pencarian di atas untuk memasukkan nama pegawai {isKabkoRoute ? 'BPS Kabupaten/Kota' : 'BPS Provinsi Sultra'} dan membuka laporan ergonomi detailnya.
+            );
+          } else if (currentTab === 'provincial') {
+            return (
+              /* TAB 2: AGGREGATE DASHBOARD VIEW (PROVINSI or KABKO) */
+              <section className="max-w-6xl mx-auto px-6 py-8 animate-fade-in">
+                
+                {/* Header */}
+                <div className="text-center md:text-left mb-10">
+                  <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-bold tracking-widest uppercase">
+                    <Building2 size={12} /> {isKabkoRoute ? 'Analisis Tingkat Kabupaten/Kota' : 'Analisis Tingkat Provinsi'}
+                  </div>
+                  <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-2 uppercase">
+                    DASHBOARD ERGONOMI {isKabkoRoute ? 'KABKOTA' : 'PROVINSI'}
+                  </h2>
+                  <p className="text-sm text-slate-400">
+                    Analisis statistik komparatif dan pemetaan risiko ergonomi untuk seluruh pegawai {isKabkoRoute ? 'BPS Kabupaten/Kota se-Sulawesi Tenggara' : 'BPS Provinsi Sulawesi Tenggara'}.
                   </p>
                 </div>
-              </section>
-            )}
-          </>
-        ) : (
-          /* TAB 2: AGGREGATE DASHBOARD VIEW (PROVINSI or KABKO) */
-          <section className="max-w-6xl mx-auto px-6 py-8 animate-fade-in">
-            
-            {/* Header */}
-            <div className="text-center md:text-left mb-10">
-              <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-bold tracking-widest uppercase">
-                <Building2 size={12} /> {isKabkoRoute ? 'Analisis Tingkat Kabupaten/Kota' : 'Analisis Tingkat Provinsi'}
-              </div>
-              <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-2 uppercase">
-                DASHBOARD ERGONOMI {isKabkoRoute ? 'KABKOTA' : 'PROVINSI'}
-              </h2>
-              <p className="text-sm text-slate-400">
-                Analisis statistik komparatif dan pemetaan risiko ergonomi untuk seluruh pegawai {isKabkoRoute ? 'BPS Kabupaten/Kota se-Sulawesi Tenggara' : 'BPS Provinsi Sulawesi Tenggara'}.
-              </p>
-            </div>
 
-            {/* Executive Summary Cards */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
-              
-              {/* Card 1: Total Employees */}
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Responden Diuji</div>
-                  <div className="text-3xl font-black text-white mt-1">{totalEmployees} <span className="text-xs text-slate-500 font-normal">Pegawai</span></div>
-                  <div className="text-[10px] text-emerald-400 font-mono mt-1">100% Data Valid</div>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400 shrink-0">
-                  <Users size={20} />
-                </div>
-              </div>
+                {/* Executive Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                  
+                  {/* Card 1: Total Employees */}
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Responden Diuji</div>
+                      <div className="text-3xl font-black text-white mt-1">{totalEmployees} <span className="text-xs text-slate-500 font-normal">Pegawai</span></div>
+                      <div className="text-[10px] text-emerald-400 font-mono mt-1">100% Data Valid</div>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400 shrink-0">
+                      <Users size={20} />
+                    </div>
+                  </div>
 
-              {/* Card 2: Average NBM Score */}
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rerata Skor NBM</div>
-                  <div className="text-3xl font-black text-white mt-1">{data.statistics.avg_nbm}</div>
-                  <div className="text-[10px] text-emerald-400 font-mono mt-1">Kategori Keluhan Ringan</div>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400 shrink-0">
-                  <Activity size={20} />
-                </div>
-              </div>
+                  {/* Card 2: Average NBM Score */}
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rerata Skor NBM</div>
+                      <div className="text-3xl font-black text-white mt-1">{data.statistics.avg_nbm}</div>
+                      <div className="text-[10px] text-emerald-400 font-mono mt-1">Kategori Keluhan Ringan</div>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400 shrink-0">
+                      <Activity size={20} />
+                    </div>
+                  </div>
 
-              {/* Card 3: Average ROSA Score */}
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rerata Skor ROSA</div>
-                  <div className="text-3xl font-black text-white mt-1">{data.statistics.avg_rosa}</div>
-                  <div className="text-[10px] text-rose-400 font-mono mt-1">Kategori Risiko Tinggi</div>
-                </div>
-                <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-400 shrink-0">
-                  <AlertTriangle size={20} />
-                </div>
-              </div>
+                  {/* Card 3: Average ROSA Score */}
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rerata Skor ROSA</div>
+                      <div className="text-3xl font-black text-white mt-1">{data.statistics.avg_rosa}</div>
+                      <div className="text-[10px] text-rose-400 font-mono mt-1">Kategori Risiko Tinggi</div>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-400 shrink-0">
+                      <AlertTriangle size={20} />
+                    </div>
+                  </div>
 
-              {/* Card 4: High Risk Ratio */}
-              <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
-                <div>
-                  <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rasio Risiko Tinggi</div>
-                  <div className="text-3xl font-black text-rose-400 mt-1">{highRiskPercentage}%</div>
-                  <div className="text-[10px] text-slate-500 mt-1">{totalHighRisk} Pegawai Berisiko</div>
+                  {/* Card 4: High Risk Ratio */}
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rasio Risiko Tinggi</div>
+                      <div className="text-3xl font-black text-rose-400 mt-1">{highRiskPercentage}%</div>
+                      <div className="text-[10px] text-slate-500 mt-1">{totalHighRisk} Pegawai Berisiko</div>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-400 shrink-0">
+                      <ShieldCheck size={20} />
+                    </div>
+                  </div>
+
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-400 shrink-0">
-                  <ShieldCheck size={20} />
-                </div>
-              </div>
 
-            </div>
-
-            {/* Distributions Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              
-              {/* NBM Categories */}
-              <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5">
-                <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                  <Activity size={18} className="text-emerald-400" /> Distribusi Kategori Keluhan NBM
-                </h3>
-                <div className="space-y-4">
-                  {Object.entries(data.statistics.nbm_categories).map(([cat, count], idx) => {
-                    const percentage = ((count / totalEmployees) * 100).toFixed(1);
-                    return (
-                      <div key={idx} className="space-y-2">
-                        <div className="flex justify-between text-xs font-semibold">
-                          <span className="text-slate-300">{cat}</span>
-                          <span className="text-emerald-400">{count} Pegawai ({percentage}%)</span>
-                        </div>
-                        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-emerald-500" 
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* ROSA Categories */}
-              <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5">
-                <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                  <Monitor size={18} className="text-rose-400" /> Distribusi Kategori Risiko ROSA
-                </h3>
-                <div className="space-y-4">
-                  {Object.entries(data.statistics.rosa_categories).map(([cat, count], idx) => {
-                    const percentage = ((count / totalEmployees) * 100).toFixed(1);
-                    const isHigh = cat.toLowerCase().includes('tinggi');
-                    return (
-                      <div key={idx} className="space-y-2">
-                        <div className="flex justify-between text-xs font-semibold">
-                          <span className="text-slate-300">{cat}</span>
-                          <span className={`${isHigh ? 'text-rose-400' : 'text-amber-400'}`}>{count} Pegawai ({percentage}%)</span>
-                        </div>
-                        <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full ${isHigh ? 'bg-rose-500' : 'bg-amber-500'}`} 
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-            </div>
-
-            {/* Satker Comparison Table (KABKO Route Only) */}
-            {isKabkoRoute && data.statistics.satker_stats && data.statistics.satker_stats.length > 0 && (
-              <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5 mb-8">
-                <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                  <Building2 size={18} className="text-emerald-400" /> Profil Risiko Ergonomi per Kabupaten/Kota
-                </h3>
-                <p className="text-xs text-slate-500 mb-6">Peta kerentanan ergonomi tiap kantor BPS Kabupaten/Kota yang diurutkan berdasarkan rerata skor ROSA (Kondisi workstation).</p>
-                
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="border-b border-white/10 text-slate-500 text-xs uppercase font-bold tracking-wider">
-                        <th className="pb-3 pr-4">Satuan Kerja (Satker)</th>
-                        <th className="pb-3 px-4">Jumlah Pegawai</th>
-                        <th className="pb-3 px-4">Rerata NBM</th>
-                        <th className="pb-3 px-4">Rerata ROSA</th>
-                        <th className="pb-3 pl-4 text-right">Tingkat Risiko Rata-rata</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5 text-sm">
-                      {data.statistics.satker_stats.map((item, idx) => {
-                        const isHighRisk = item.avg_rosa >= 5.0;
+                {/* Distributions Grid */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                  
+                  {/* NBM Categories */}
+                  <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5">
+                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                      <Activity size={18} className="text-emerald-400" /> Distribusi Kategori Keluhan NBM
+                    </h3>
+                    <div className="space-y-4">
+                      {Object.entries(data.statistics.nbm_categories).map(([cat, count], idx) => {
+                        const percentage = ((count / totalEmployees) * 100).toFixed(1);
                         return (
-                          <tr key={idx} className="hover:bg-white/5 transition-colors">
-                            <td className="py-4 pr-4 font-bold text-white">{item.satker}</td>
-                            <td className="py-4 px-4 font-mono text-slate-300">{item.count} orang</td>
-                            <td className="py-4 px-4 font-mono text-slate-300">{item.avg_nbm}</td>
-                            <td className="py-4 px-4 font-mono text-slate-300">{item.avg_rosa}</td>
-                            <td className="py-4 pl-4 text-right">
-                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${isHighRisk ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                                {isHighRisk ? 'Risiko Tinggi' : 'Risiko Sedang'}
-                              </span>
-                            </td>
-                          </tr>
+                          <div key={idx} className="space-y-2">
+                            <div className="flex justify-between text-xs font-semibold">
+                              <span className="text-slate-300">{cat}</span>
+                              <span className="text-emerald-400">{count} Pegawai ({percentage}%)</span>
+                            </div>
+                            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-emerald-500" 
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
                         );
                       })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {/* Pain Areas & Risk Factors */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-              
-              {/* Pain Areas */}
-              <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5">
-                <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                  <Thermometer size={18} className="text-emerald-400" /> Area Keluhan Tubuh Terbanyak (NBM)
-                </h3>
-                <p className="text-xs text-slate-500 mb-6">Persentase pegawai yang merasakan keluhan (Agak Sakit / Sakit / Sangat Sakit) pada bagian tubuh tertentu.</p>
-                <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                  {data.statistics.body_pain_stats.slice(0, 8).map((item, idx) => (
-                    <div key={idx} className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-bold text-slate-300">#{idx+1} {item.area}</span>
-                        <span className="text-emerald-400 font-mono font-bold">{item.percentage}%</span>
-                      </div>
-                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-emerald-500 to-teal-400" 
-                          style={{ width: `${item.percentage}%` }}
-                        />
-                      </div>
-                      <div className="text-[9px] text-slate-500 text-right font-mono">
-                        {item.total_pained} dari {totalEmployees} pegawai &bull; {item.sakit + item.sangat_sakit} keluhan berat
-                      </div>
                     </div>
-                  ))}
-                </div>
-              </div>
+                  </div>
 
-              {/* Risk Factors */}
-              <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5">
-                <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                  <Zap size={18} className="text-amber-400" /> Faktor Bahaya Ergonomi Terbesar (ROSA)
-                </h3>
-                <p className="text-xs text-slate-500 mb-6">Persentase ketidaksesuaian fasilitas atau tata letak workstation pegawai yang terdeteksi bermasalah.</p>
-                <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
-                  {data.statistics.risk_factor_stats.slice(0, 8).map((item, idx) => (
-                    <div key={idx} className="space-y-1.5">
-                      <div className="flex justify-between text-xs">
-                        <span className="font-bold text-slate-300">#{idx+1} {item.factor}</span>
-                        <span className="text-rose-400 font-mono font-bold">{item.percentage}%</span>
-                      </div>
-                      <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
-                        <div 
-                          className="h-full bg-gradient-to-r from-rose-500 to-amber-500" 
-                          style={{ width: `${item.percentage}%` }}
-                        />
-                      </div>
-                      <div className="text-[9px] text-slate-500 text-right font-mono">
-                        Mempengaruhi {item.count} dari {totalEmployees} pegawai
-                      </div>
+                  {/* ROSA Categories */}
+                  <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5">
+                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                      <Monitor size={18} className="text-rose-400" /> Distribusi Kategori Risiko ROSA
+                    </h3>
+                    <div className="space-y-4">
+                      {Object.entries(data.statistics.rosa_categories).map(([cat, count], idx) => {
+                        const percentage = ((count / totalEmployees) * 100).toFixed(1);
+                        const isHigh = cat.toLowerCase().includes('tinggi');
+                        return (
+                          <div key={idx} className="space-y-2">
+                            <div className="flex justify-between text-xs font-semibold">
+                              <span className="text-slate-300">{cat}</span>
+                              <span className={`${isHigh ? 'text-rose-400' : 'text-amber-400'}`}>{count} Pegawai ({percentage}%)</span>
+                            </div>
+                            <div className="h-2 bg-white/5 rounded-full overflow-hidden">
+                              <div 
+                                className={`h-full ${isHigh ? 'bg-rose-500' : 'bg-amber-500'}`} 
+                                style={{ width: `${percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
-                  ))}
+                  </div>
+
                 </div>
-              </div>
 
-            </div>
+                {/* Satker Comparison Table (KABKO Route Only) */}
+                {isKabkoRoute && data.statistics.satker_stats && data.statistics.satker_stats.length > 0 && (
+                  <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5 mb-8">
+                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                      <Building2 size={18} className="text-emerald-400" /> Profil Risiko Ergonomi per Kabupaten/Kota
+                    </h3>
+                    <p className="text-xs text-slate-500 mb-6">Peta kerentanan ergonomi tiap kantor BPS Kabupaten/Kota yang diurutkan berdasarkan rerata skor ROSA (Kondisi workstation).</p>
+                    
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="border-b border-white/10 text-slate-500 text-xs uppercase font-bold tracking-wider">
+                            <th className="pb-3 pr-4">Satuan Kerja (Satker)</th>
+                            <th className="pb-3 px-4">Jumlah Pegawai</th>
+                            <th className="pb-3 px-4">Rerata NBM</th>
+                            <th className="pb-3 px-4">Rerata ROSA</th>
+                            <th className="pb-3 pl-4 text-right">Tingkat Risiko Rata-rata</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5 text-sm">
+                          {data.statistics.satker_stats.map((item, idx) => {
+                            const isHighRisk = item.avg_rosa >= 5.0;
+                            return (
+                              <tr key={idx} className="hover:bg-white/5 transition-colors cursor-pointer" onClick={() => {
+                                setSelectedSatker(item.satker);
+                                setCurrentTab('satker');
+                              }}>
+                                <td className="py-4 pr-4 font-bold text-white group-hover:text-emerald-400">{item.satker}</td>
+                                <td className="py-4 px-4 font-mono text-slate-300">{item.count} orang</td>
+                                <td className="py-4 px-4 font-mono text-slate-300">{item.avg_nbm}</td>
+                                <td className="py-4 px-4 font-mono text-slate-300">{item.avg_rosa}</td>
+                                <td className="py-4 pl-4 text-right">
+                                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${isHighRisk ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                                    {isHighRisk ? 'Risiko Tinggi' : 'Risiko Sedang'}
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                )}
 
-            {/* Department Comparison Table (Non-KABKO or sub breakdown) */}
-            <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5 mb-8">
-              <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <Building2 size={18} className="text-emerald-400" /> Perbandingan Risiko Ergonomi per Bagian Kerja
-              </h3>
-              <p className="text-xs text-slate-500 mb-6">Peta kerentanan ergonomi tiap divisi/bagian kerja (Umum, Nerwilis, IPDS, Sosial, dsb) diurutkan berdasarkan rerata skor ROSA.</p>
-              
-              <div className="overflow-x-auto">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="border-b border-white/10 text-slate-500 text-xs uppercase font-bold tracking-wider">
-                      <th className="pb-3 pr-4">Nama Bagian</th>
-                      <th className="pb-3 px-4">Jumlah Pegawai</th>
-                      <th className="pb-3 px-4">Rerata Skor NBM</th>
-                      <th className="pb-3 px-4">Rerata Skor ROSA</th>
-                      <th className="pb-3 pl-4 text-right">Tingkat Risiko Workstation</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-white/5 text-sm">
-                    {data.statistics.department_stats.map((dept, idx) => {
-                      const isHighRisk = dept.avg_rosa >= 5.0;
-                      return (
-                        <tr key={idx} className="hover:bg-white/5 transition-colors">
-                          <td className="py-4 pr-4 font-bold text-white">{dept.bagian}</td>
-                          <td className="py-4 px-4 font-mono text-slate-300">{dept.count} orang</td>
-                          <td className="py-4 px-4 font-mono text-slate-300">{dept.avg_nbm}</td>
-                          <td className="py-4 px-4 font-mono text-slate-300">{dept.avg_rosa}</td>
-                          <td className="py-4 pl-4 text-right">
-                            <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${isHighRisk ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
-                              {isHighRisk ? 'Risiko Tinggi' : 'Risiko Sedang'}
-                            </span>
-                          </td>
+                {/* Pain Areas & Risk Factors */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                  
+                  {/* Pain Areas */}
+                  <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5">
+                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                      <Thermometer size={18} className="text-emerald-400" /> Area Keluhan Tubuh Terbanyak (NBM)
+                    </h3>
+                    <p className="text-xs text-slate-500 mb-6">Persentase pegawai yang merasakan keluhan (Agak Sakit / Sakit / Sangat Sakit) pada bagian tubuh tertentu.</p>
+                    <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                      {data.statistics.body_pain_stats.slice(0, 8).map((item, idx) => (
+                        <div key={idx} className="space-y-1.5">
+                          <div className="flex justify-between text-xs">
+                            <span className="font-bold text-slate-300">#{idx+1} {item.area}</span>
+                            <span className="text-emerald-400 font-mono font-bold">{item.percentage}%</span>
+                          </div>
+                          <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-emerald-500 to-teal-400" 
+                              style={{ width: `${item.percentage}%` }}
+                            />
+                          </div>
+                          <div className="text-[9px] text-slate-500 text-right font-mono">
+                            {item.total_pained} dari {totalEmployees} pegawai &bull; {item.sakit + item.sangat_sakit} keluhan berat
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Risk Factors */}
+                  <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5">
+                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                      <Zap size={18} className="text-amber-400" /> Faktor Bahaya Ergonomi Terbesar (ROSA)
+                    </h3>
+                    <p className="text-xs text-slate-500 mb-6">Persentase ketidaksesuaian fasilitas atau tata letak workstation pegawai yang terdeteksi bermasalah.</p>
+                    <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                      {data.statistics.risk_factor_stats.slice(0, 8).map((item, idx) => (
+                        <div key={idx} className="space-y-1.5">
+                          <div className="flex justify-between text-xs">
+                            <span className="font-bold text-slate-300">#{idx+1} {item.factor}</span>
+                            <span className="text-rose-400 font-mono font-bold">{item.percentage}%</span>
+                          </div>
+                          <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                            <div 
+                              className="h-full bg-gradient-to-r from-rose-500 to-amber-500" 
+                              style={{ width: `${item.percentage}%` }}
+                            />
+                          </div>
+                          <div className="text-[9px] text-slate-500 text-right font-mono">
+                            Mempengaruhi {item.count} dari {totalEmployees} pegawai
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+
+                {/* Department Comparison Table */}
+                <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5 mb-8">
+                  <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                    <Building2 size={18} className="text-emerald-400" /> Perbandingan Risiko Ergonomi per Bagian Kerja
+                  </h3>
+                  <p className="text-xs text-slate-500 mb-6">Peta kerentanan ergonomi tiap divisi/bagian kerja (Umum, Nerwilis, IPDS, Sosial, dsb) diurutkan berdasarkan rerata skor ROSA.</p>
+                  
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="border-b border-white/10 text-slate-500 text-xs uppercase font-bold tracking-wider">
+                          <th className="pb-3 pr-4">Nama Bagian</th>
+                          <th className="pb-3 px-4">Jumlah Pegawai</th>
+                          <th className="pb-3 px-4">Rerata Skor NBM</th>
+                          <th className="pb-3 px-4">Rerata Skor ROSA</th>
+                          <th className="pb-3 pl-4 text-right">Tingkat Risiko Workstation</th>
                         </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            {/* Recommendations */}
-            <div className="p-8 md:p-12 bg-emerald-500/5 rounded-[4rem] border border-emerald-500/10">
-              <div className="flex items-center gap-3 mb-6">
-                <ShieldCheck className="text-emerald-500" />
-                <h3 className="text-2xl font-bold">Rekomendasi Kebijakan Mitigasi Ergonomi</h3>
-              </div>
-              <p className="text-xs text-slate-400 mb-8 leading-relaxed">
-                Berdasarkan data analisis ergonomi dari {totalEmployees} responden pegawai se-Sulawesi Tenggara, berikut adalah langkah mitigasi yang disarankan untuk jajaran pimpinan:
-              </p>
-
-              <div className="space-y-6">
-                {/* Recommendation 1: Kursi */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-emerald-400 shrink-0">
-                    <Armchair size={18} />
-                  </div>
-                  <div>
-                    <h4 className="text-base font-bold text-white mb-1">Standarisasi Kursi Ergonomis Kerja</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      Sebesar **{data.statistics.risk_factor_stats.find(r => r.factor.includes("Kursi"))?.percentage || "80"}%** pegawai memiliki kursi yang ketinggiannya statis. Direkomendasikan pengadaan kursi dengan tuas hidrolik penyesuai tinggi serta sandaran tangan yang bisa diatur untuk menyelaraskan postur siku-bahu.
-                    </p>
+                      </thead>
+                      <tbody className="divide-y divide-white/5 text-sm">
+                        {data.statistics.department_stats.map((dept, idx) => {
+                          const isHighRisk = dept.avg_rosa >= 5.0;
+                          return (
+                            <tr key={idx} className="hover:bg-white/5 transition-colors">
+                              <td className="py-4 pr-4 font-bold text-white">{dept.bagian}</td>
+                              <td className="py-4 px-4 font-mono text-slate-300">{dept.count} orang</td>
+                              <td className="py-4 px-4 font-mono text-slate-300">{dept.avg_nbm}</td>
+                              <td className="py-4 px-4 font-mono text-slate-300">{dept.avg_rosa}</td>
+                              <td className="py-4 pl-4 text-right">
+                                <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${isHighRisk ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                                  {isHighRisk ? 'Risiko Tinggi' : 'Risiko Sedang'}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
 
-                {/* Recommendation 2: Monitor */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-emerald-400 shrink-0">
-                    <Monitor size={18} />
+                {/* Recommendations */}
+                <div className="p-8 md:p-12 bg-emerald-500/5 rounded-[4rem] border border-emerald-500/10">
+                  <div className="flex items-center gap-3 mb-6">
+                    <ShieldCheck className="text-emerald-500" />
+                    <h3 className="text-2xl font-bold">Rekomendasi Kebijakan Mitigasi Ergonomi</h3>
                   </div>
-                  <div>
-                    <h4 className="text-base font-bold text-white mb-1">Penyesuaian Ketinggian Monitor Layar</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      Lebih dari **50%** pegawai mengalami keluhan nyeri leher akibat letak monitor yang terlampau rendah. Disarankan penyediaan stand monitor tambahan atau melatih pegawai mengatur sudut kemiringan monitor agar sejajar mata.
-                    </p>
+                  <p className="text-xs text-slate-400 mb-8 leading-relaxed">
+                    Berdasarkan data analisis ergonomi dari {totalEmployees} responden pegawai se-Sulawesi Tenggara, berikut adalah langkah mitigasi yang disarankan untuk jajaran pimpinan:
+                  </p>
+
+                  <div className="space-y-6">
+                    {/* Recommendation 1: Kursi */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-emerald-400 shrink-0">
+                        <Armchair size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-bold text-white mb-1">Standarisasi Kursi Ergonomis Kerja</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          Sebesar **{data.statistics.risk_factor_stats.find(r => r.factor.includes("Kursi"))?.percentage || "80"}%** pegawai memiliki kursi yang ketinggiannya statis. Direkomendasikan pengadaan kursi dengan tuas hidrolik penyesuai tinggi serta sandaran tangan yang bisa diatur untuk menyelaraskan postur siku-bahu.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Recommendation 2: Monitor */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-emerald-400 shrink-0">
+                        <Monitor size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-bold text-white mb-1">Penyesuaian Ketinggian Monitor Layar</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          Lebih dari **50%** pegawai mengalami keluhan nyeri leher akibat letak monitor yang terlampau rendah. Disarankan penyediaan stand monitor tambahan atau melatih pegawai mengatur sudut kemiringan monitor agar sejajar mata.
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Recommendation 3: Peregangan */}
+                    <div className="flex items-start gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-emerald-400 shrink-0">
+                        <Activity size={18} />
+                      </div>
+                      <div>
+                        <h4 className="text-base font-bold text-white mb-1">Implementasi Stretching Massal Terjadwal</h4>
+                        <p className="text-xs text-slate-400 leading-relaxed">
+                          Keluhan tertinggi terdeteksi pada area **{data.statistics.body_pain_stats[0]?.area || "Pinggang / Punggung Bawah"} ({data.statistics.body_pain_stats[0]?.percentage || "75"}%)** karena durasi duduk tanpa jeda. Manajemen perlu menerapkan pengingat peregangan massal di seluruh unit kerja setiap pukul 10:00 dan 14:00 WITA.
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Recommendation 3: Peregangan */}
-                <div className="flex items-start gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-emerald-400 shrink-0">
-                    <Activity size={18} />
+              </section>
+            );
+          } else if (currentTab === 'satker') {
+            /* TAB 3: REGENCY SPECIFIC DASHBOARD VIEW */
+            const satkerEmployees = data.employees.filter(e => e.satker === selectedSatker);
+            const totalSatkerEmployees = satkerEmployees.length;
+            const avgSatkerNbm = totalSatkerEmployees > 0 
+              ? (satkerEmployees.reduce((sum, e) => sum + e.nbm_score, 0) / totalSatkerEmployees).toFixed(1)
+              : 0;
+            const avgSatkerRosa = totalSatkerEmployees > 0 
+              ? (satkerEmployees.reduce((sum, e) => sum + e.rosa_score, 0) / totalSatkerEmployees).toFixed(1)
+              : 0;
+            const satkerHighRiskCount = satkerEmployees.filter(e => e.rosa_score >= 5).length;
+            const satkerHighRiskPercentage = totalSatkerEmployees > 0 
+              ? ((satkerHighRiskCount / totalSatkerEmployees) * 100).toFixed(1)
+              : "0.0";
+
+            const satkerPainStats = getSatkerPainStats(satkerEmployees);
+            const satkerRiskStats = getSatkerRiskStats(satkerEmployees);
+            const uniqueSatkers = Array.from(new Set(data.employees.map(e => e.satker))).sort();
+
+            return (
+              <section className="max-w-6xl mx-auto px-6 py-8 animate-fade-in">
+                
+                {/* Selector */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 mb-10 pb-6 border-b border-white/5">
+                  <div className="text-center md:text-left">
+                    <div className="inline-flex items-center gap-2 mb-2 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-bold tracking-widest uppercase">
+                      <Building2 size={12} /> Analisis Per Kabupaten/Kota
+                    </div>
+                    <h2 className="text-2xl md:text-3xl font-black text-white">ANALISIS DETAIL KABKOTA</h2>
+                    <p className="text-xs text-slate-500 mt-1">Pilih satuan kerja di bawah ini untuk meninjau peta keluhan & risiko ergonomi setempat secara khusus.</p>
                   </div>
-                  <div>
-                    <h4 className="text-base font-bold text-white mb-1">Implementasi Stretching Massal Terjadwal</h4>
-                    <p className="text-xs text-slate-400 leading-relaxed">
-                      Keluhan tertinggi terdeteksi pada area **{data.statistics.body_pain_stats[0]?.area || "Pinggang / Punggung Bawah"} ({data.statistics.body_pain_stats[0]?.percentage || "75"}%)** karena durasi duduk tanpa jeda. Manajemen perlu menerapkan pengingat peregangan massal di seluruh unit kerja setiap pukul 10:00 dan 14:00 WITA.
-                    </p>
+                  
+                  <div className="relative min-w-[280px] self-center">
+                    <select
+                      value={selectedSatker}
+                      onChange={(e) => setSelectedSatker(e.target.value)}
+                      className="w-full bg-slate-900 border border-white/10 text-white rounded-2xl px-5 py-3.5 outline-none backdrop-blur-md text-sm font-semibold appearance-none cursor-pointer focus:border-emerald-500/50 transition-all pr-10"
+                    >
+                      {uniqueSatkers.map((satker, i) => (
+                        <option key={i} value={satker} className="bg-black text-slate-200">
+                          {satker}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-slate-400">
+                      <ChevronDown size={18} />
+                    </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-          </section>
-        )}
+                {/* Satker Executive Summary Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Pegawai Diuji</div>
+                      <div className="text-3xl font-black text-white mt-1">{totalSatkerEmployees} <span className="text-xs text-slate-500 font-normal">Orang</span></div>
+                      <div className="text-[10px] text-emerald-400 font-mono mt-1">BPS di Wilayah Terkait</div>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400 shrink-0">
+                      <Users size={20} />
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rerata Skor NBM</div>
+                      <div className="text-3xl font-black text-white mt-1">{avgSatkerNbm}</div>
+                      <div className="text-[10px] text-emerald-400 font-mono mt-1">Tingkat Keluhan Satker</div>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400 shrink-0">
+                      <Activity size={20} />
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rerata Skor ROSA</div>
+                      <div className="text-3xl font-black text-white mt-1">{avgSatkerRosa}</div>
+                      <div className="text-[10px] text-rose-400 font-mono mt-1">Bahaya Fasilitas Satker</div>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-400 shrink-0">
+                      <AlertTriangle size={20} />
+                    </div>
+                  </div>
+
+                  <div className="p-6 rounded-3xl bg-gradient-to-br from-slate-900 to-black border border-white/5 flex items-center justify-between">
+                    <div>
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Rasio Risiko Tinggi</div>
+                      <div className="text-3xl font-black text-rose-400 mt-1">{satkerHighRiskPercentage}%</div>
+                      <div className="text-[10px] text-slate-500 mt-1">{satkerHighRiskCount} Pegawai Kritis</div>
+                    </div>
+                    <div className="w-12 h-12 rounded-xl bg-rose-500/10 flex items-center justify-center border border-rose-500/20 text-rose-400 shrink-0">
+                      <ShieldCheck size={20} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Specific Satker Stats details */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
+                  {/* Satker Pain Areas */}
+                  <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5">
+                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                      <Thermometer size={18} className="text-emerald-400" /> Keluhan Tubuh Terbanyak di Satker
+                    </h3>
+                    <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                      {satkerPainStats.length > 0 ? (
+                        satkerPainStats.slice(0, 6).map((item, idx) => (
+                          <div key={idx} className="space-y-1.5">
+                            <div className="flex justify-between text-xs">
+                              <span className="font-bold text-slate-300">#{idx+1} {item.area}</span>
+                              <span className="text-emerald-400 font-mono font-bold">{item.percentage}%</span>
+                            </div>
+                            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-emerald-500 to-teal-400" 
+                                style={{ width: `${item.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-10 text-slate-500 text-xs font-mono">
+                          Tidak ada keluhan rasa sakit dilaporkan di satker ini.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Satker Risk Factors */}
+                  <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5">
+                    <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                      <Zap size={18} className="text-amber-400" /> Faktor Bahaya Terbesar di Satker
+                    </h3>
+                    <div className="space-y-4 max-h-96 overflow-y-auto pr-2">
+                      {satkerRiskStats.length > 0 ? (
+                        satkerRiskStats.slice(0, 6).map((item, idx) => (
+                          <div key={idx} className="space-y-1.5">
+                            <div className="flex justify-between text-xs">
+                              <span className="font-bold text-slate-300">#{idx+1} {item.factor}</span>
+                              <span className="text-rose-400 font-mono font-bold">{item.percentage}%</span>
+                            </div>
+                            <div className="h-1.5 bg-white/5 rounded-full overflow-hidden">
+                              <div 
+                                className="h-full bg-gradient-to-r from-rose-500 to-amber-500" 
+                                style={{ width: `${item.percentage}%` }}
+                              />
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="text-center py-10 text-slate-500 text-xs font-mono">
+                          Tidak ada faktor bahaya workstation terdeteksi di satker ini.
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Employees List in Satker */}
+                <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5">
+                  <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                    <User size={18} className="text-emerald-400" /> Daftar Pegawai di {selectedSatker}
+                  </h3>
+                  
+                  {satkerEmployees.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {satkerEmployees.map((emp, i) => {
+                        const isHighRisk = emp.rosa_score >= 5;
+                        return (
+                          <div 
+                            key={i}
+                            className="p-6 rounded-3xl bg-black/40 border border-white/5 hover:border-emerald-500/20 transition-all flex flex-col justify-between"
+                          >
+                            <div>
+                              <h4 className="text-base font-bold text-white mb-1">{emp.nama}</h4>
+                              <p className="text-[10px] text-slate-500 uppercase tracking-widest font-mono">{emp.bagian} &bull; {emp.usia}</p>
+                              
+                              <div className="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-white/5">
+                                <div>
+                                  <span className="text-[9px] text-slate-500 uppercase block">NBM Score</span>
+                                  <span className="text-xs font-bold text-emerald-400">{emp.nbm_score} ({emp.nbm_category})</span>
+                                </div>
+                                <div>
+                                  <span className="text-[9px] text-slate-500 uppercase block">ROSA Score</span>
+                                  <span className={`text-xs font-bold ${isHighRisk ? 'text-rose-400' : 'text-amber-400'}`}>
+                                    {emp.rosa_score} ({emp.rosa_category})
+                                  </span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <button
+                              onClick={() => {
+                                setSelectedEmployee(emp);
+                                setSearchQuery(emp.nama);
+                                setCurrentTab('personal');
+                                setShowSuggestions(false);
+                              }}
+                              className="mt-6 w-full py-2 bg-white/5 hover:bg-emerald-500 hover:text-black rounded-xl text-[10px] font-bold text-slate-300 transition-all flex items-center justify-center gap-2 border border-white/5"
+                            >
+                              Buka Laporan Personal <ArrowRight size={12} />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 text-slate-500 text-xs font-mono">
+                      Tidak ada pegawai terdaftar di satker ini.
+                    </div>
+                  )}
+                </div>
+
+              </section>
+            );
+          }
+          return null;
+        })()}
 
       </main>
 
