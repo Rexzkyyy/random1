@@ -3,6 +3,7 @@ import {
   User, 
   Monitor, 
   Armchair, 
+  ArrowRight,
   Thermometer, 
   ShieldCheck, 
   Zap, 
@@ -39,6 +40,7 @@ interface Employee {
   lama_bekerja: string;
   durasi_kerja: string;
   bagian: string;
+  satker: string;
   nbm_score: number;
   nbm_category: string;
   rosa_score: number;
@@ -49,6 +51,13 @@ interface Employee {
 
 interface DeptStat {
   bagian: string;
+  count: number;
+  avg_nbm: number;
+  avg_rosa: number;
+}
+
+interface SatkerStat {
+  satker: string;
   count: number;
   avg_nbm: number;
   avg_rosa: number;
@@ -76,6 +85,7 @@ interface Statistics {
   nbm_categories: Record<string, number>;
   rosa_categories: Record<string, number>;
   department_stats: DeptStat[];
+  satker_stats: SatkerStat[];
   body_pain_stats: BodyPainStat[];
   risk_factor_stats: RiskFactorStat[];
 }
@@ -85,7 +95,6 @@ interface ErgonomicData {
   statistics: Statistics;
 }
 
-// Group 28 NBM points into 5 major anatomical regions for the radar chart and summary
 const getGroupedPain = (titikSakit: PainPoint[]) => {
   const findScore = (areas: string[]) => {
     const scores = titikSakit.filter(t => areas.includes(t.area)).map(t => t.score);
@@ -151,8 +160,11 @@ const getIconComponent = (iconName: string) => {
 
 const App = () => {
   const [scrollY, setScrollY] = useState(0);
+  const [hash, setHash] = useState(window.location.hash);
+  
+  // Data states
   const [data, setData] = useState<ErgonomicData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
   const [currentTab, setCurrentTab] = useState<'personal' | 'provincial'>('personal');
   
   // Search state
@@ -163,25 +175,56 @@ const App = () => {
   
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
+  // Sync scroll positioning
   useEffect(() => {
     const handleScroll = () => setScrollY(window.scrollY);
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Fetch Excel processed data
+  // Sync hash routing
   useEffect(() => {
-    fetch('/ergonomic_data.json')
-      .then(res => res.json())
-      .then((jsonData: ErgonomicData) => {
-        setData(jsonData);
-        setLoading(false);
-      })
-      .catch(err => {
-        console.error("Failed to load ergonomic data:", err);
-        setLoading(false);
-      });
+    const handleHashChange = () => {
+      setHash(window.location.hash);
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
+
+  // Fetch data dynamically based on active route
+  useEffect(() => {
+    if (hash === '#/provinsi') {
+      setLoading(true);
+      setSelectedEmployee(null);
+      setSearchQuery('');
+      fetch('/provinsi_data.json')
+        .then(res => res.json())
+        .then((jsonData: ErgonomicData) => {
+          setData(jsonData);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Failed to load Provinsi data:", err);
+          setLoading(false);
+        });
+    } else if (hash === '#/kabkota') {
+      setLoading(true);
+      setSelectedEmployee(null);
+      setSearchQuery('');
+      fetch('/kabkota_data.json')
+        .then(res => res.json())
+        .then((jsonData: ErgonomicData) => {
+          setData(jsonData);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error("Failed to load Kabkota data:", err);
+          setLoading(false);
+        });
+    } else {
+      setData(null);
+    }
+  }, [hash]);
 
   // Close search suggestions when clicking outside
   useEffect(() => {
@@ -194,6 +237,109 @@ const App = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
+  // Back to main portal
+  const handleBackToPortal = () => {
+    window.location.hash = '';
+  };
+
+  if (hash !== '#/provinsi' && hash !== '#/kabkota') {
+    /* MAIN PORTAL LANDING PAGE */
+    return (
+      <div className="min-h-screen bg-[#050505] text-slate-200 font-sans selection:bg-emerald-500 selection:text-black flex flex-col justify-between relative overflow-hidden">
+        
+        {/* Background Gradients */}
+        <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
+          <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-emerald-600/10 blur-[130px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-blue-600/10 blur-[120px]" />
+        </div>
+
+        {/* Portal Header */}
+        <header className="relative z-10 px-8 py-6 max-w-6xl mx-auto w-full flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
+              <Activity size={20} className="text-black font-black" />
+            </div>
+            <div>
+              <span className="font-bold text-white tracking-widest text-sm uppercase">EKySehat Sultra</span>
+              <span className="text-[9px] text-emerald-400 font-mono block leading-none tracking-widest">BPS SULAWESI TENGGARA</span>
+            </div>
+          </div>
+        </header>
+
+        {/* Portal Body */}
+        <main className="relative z-10 max-w-5xl mx-auto px-6 py-12 w-full flex-grow flex flex-col justify-center items-center">
+          <div className="text-center mb-16 max-w-2xl">
+            <div className="inline-flex items-center gap-2 mb-4 px-4 py-2 rounded-full bg-white/5 border border-white/10 backdrop-blur-md">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+              </span>
+              <span className="text-[10px] uppercase tracking-[0.3em] font-black text-emerald-400">Ergonomic Health Portal</span>
+            </div>
+            <h1 className="text-4xl md:text-7xl font-black tracking-tight mb-6 leading-none italic bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent">
+              EKySehat Portal.
+            </h1>
+            <p className="text-base text-slate-400 font-light leading-relaxed">
+              Selamat datang di portal analisis kondisi ergonomi pegawai Badan Pusat Statistik se-Provinsi Sulawesi Tenggara. Pilih lingkup satuan kerja di bawah ini:
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 w-full max-w-4xl">
+            
+            {/* Card 1: Provinsi */}
+            <a 
+              href="#/provinsi"
+              className="group p-8 md:p-10 rounded-[3rem] bg-gradient-to-br from-slate-900/80 to-black border border-white/5 hover:border-emerald-500/30 shadow-2xl backdrop-blur-sm transition-all duration-300 flex flex-col justify-between text-left relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-all" />
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-emerald-400 mb-8 group-hover:bg-emerald-500 group-hover:text-black transition-all">
+                  <Building2 size={24} />
+                </div>
+                <h3 className="text-2xl font-black text-white mb-2">BPS Provinsi</h3>
+                <p className="text-sm text-slate-400 font-light leading-relaxed">
+                  Laporan ergonomi personal dan dashboard analisis kesehatan untuk pegawai di lingkungan kantor **BPS Provinsi Sulawesi Tenggara**.
+                </p>
+              </div>
+              <div className="mt-12 flex items-center gap-3 font-bold text-sm text-emerald-400 group-hover:text-emerald-300 transition-colors">
+                Buka Analisis Provinsi <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </a>
+
+            {/* Card 2: Kabkota */}
+            <a 
+              href="#/kabkota"
+              className="group p-8 md:p-10 rounded-[3rem] bg-gradient-to-br from-slate-900/80 to-black border border-white/5 hover:border-emerald-500/30 shadow-2xl backdrop-blur-sm transition-all duration-300 flex flex-col justify-between text-left relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/5 rounded-full blur-2xl group-hover:bg-emerald-500/10 transition-all" />
+              <div>
+                <div className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-emerald-400 mb-8 group-hover:bg-emerald-500 group-hover:text-black transition-all">
+                  <Users size={24} />
+                </div>
+                <h3 className="text-2xl font-black text-white mb-2">BPS Kabupaten/Kota</h3>
+                <p className="text-sm text-slate-400 font-light leading-relaxed">
+                  Laporan ergonomi personal dan dashboard analisis pemetaan risiko komparatif untuk seluruh pegawai **BPS Kabupaten/Kota se-Sulawesi Tenggara**.
+                </p>
+              </div>
+              <div className="mt-12 flex items-center gap-3 font-bold text-sm text-emerald-400 group-hover:text-emerald-300 transition-colors">
+                Buka Analisis Kabupaten/Kota <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+              </div>
+            </a>
+
+          </div>
+        </main>
+
+        {/* Portal Footer */}
+        <footer className="relative z-10 py-10 text-center text-slate-600 text-xs border-t border-white/5">
+          <p>Portal EKySehat Sulawesi Tenggara &copy; 2026</p>
+          <p className="mt-2 tracking-widest uppercase text-[10px]">Data-Driven Ergonomic Analysis</p>
+        </footer>
+
+      </div>
+    );
+  }
+
+  // Loading state inside router
   if (loading) {
     return (
       <div className="min-h-screen bg-[#050505] text-slate-200 flex flex-col items-center justify-center gap-4">
@@ -211,16 +357,22 @@ const App = () => {
       <div className="min-h-screen bg-[#050505] text-slate-200 flex flex-col items-center justify-center gap-4">
         <AlertTriangle size={48} className="text-rose-500" />
         <p className="text-rose-400 font-mono text-sm uppercase">Gagal memuat basis data ergonomi.</p>
+        <button onClick={handleBackToPortal} className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 text-white rounded-xl text-xs font-bold transition-all">
+          Kembali ke Portal Utama
+        </button>
       </div>
     );
   }
+
+  const isKabkoRoute = hash === '#/kabkota';
+  const portalName = isKabkoRoute ? "BPS Kabupaten/Kota" : "BPS Provinsi Sultra";
 
   // Filter autocomplete suggestions
   const filteredSuggestions = searchQuery.trim() !== ''
     ? data.employees.filter(emp =>
         emp.nama.toLowerCase().includes(searchQuery.toLowerCase())
       ).slice(0, 8)
-    : data.employees.slice(0, 5); // default suggestions when empty
+    : data.employees.slice(0, 5);
 
   // Grouped pain points for selected employee radar chart
   const groupedPain = selectedEmployee ? getGroupedPain(selectedEmployee.titik_sakit) : [];
@@ -228,7 +380,7 @@ const App = () => {
   // Custom Radar Chart Calculation
   const radarLabels = groupedPain.map(d => d.area);
   const radarScores = groupedPain.map(d => d.score);
-  const maxScore = 3; // Scale 0-3
+  const maxScore = 3; 
   const center = 150;
   const radius = 100;
 
@@ -251,7 +403,7 @@ const App = () => {
     ? selectedEmployee.titik_sakit.filter(t => t.score > 0)
     : [];
 
-  // Get high risk ratio for provincial stats
+  // Get high risk ratio for stats
   const totalEmployees = data.statistics.total_employees;
   const totalHighRisk = data.statistics.rosa_categories["Risiko Tinggi"] || 0;
   const highRiskPercentage = ((totalHighRisk / totalEmployees) * 100).toFixed(1);
@@ -273,30 +425,40 @@ const App = () => {
 
       {/* Floating Modern Header / Nav */}
       <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4">
-        <div className="max-w-6xl mx-auto flex items-center justify-between px-6 py-3 rounded-2xl bg-black/60 border border-white/5 backdrop-blur-lg">
+        <div className="max-w-6xl mx-auto flex items-center justify-between px-4 md:px-6 py-3 rounded-2xl bg-black/60 border border-white/5 backdrop-blur-lg">
           
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20">
-              <Activity size={18} className="text-black font-black" />
-            </div>
-            <div>
-              <span className="font-bold text-white tracking-wider text-sm">EKySehat</span>
-              <span className="text-[9px] text-emerald-400 font-mono block leading-none">BPS SULTRA</span>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={handleBackToPortal}
+              className="p-2 hover:bg-white/5 rounded-xl text-slate-400 hover:text-white transition-all text-xs font-bold flex items-center gap-1 shrink-0"
+              title="Kembali ke Portal Utama"
+            >
+              <X size={15} /> <span className="hidden sm:inline">Portal</span>
+            </button>
+            <div className="h-5 w-[1px] bg-white/10 shrink-0" />
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center shadow-lg shadow-emerald-500/20 shrink-0">
+                <Activity size={18} className="text-black font-black" />
+              </div>
+              <div className="hidden xs:block">
+                <span className="font-bold text-white tracking-wider text-xs block">{portalName}</span>
+                <span className="text-[8px] text-emerald-400 font-mono block leading-none uppercase">EKySehat Portal</span>
+              </div>
             </div>
           </div>
 
-          <nav className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/5">
+          <nav className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/5 shrink-0">
             <button 
               onClick={() => setCurrentTab('personal')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${currentTab === 'personal' ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white'}`}
+              className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all flex items-center gap-2.5 ${currentTab === 'personal' ? 'bg-emerald-500 text-black shadow-md' : 'text-slate-400 hover:text-white'}`}
             >
               <User size={13} /> Laporan Personal
             </button>
             <button 
               onClick={() => setCurrentTab('provincial')}
-              className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-2 ${currentTab === 'provincial' ? 'bg-emerald-500 text-black shadow-md shadow-emerald-500/10' : 'text-slate-400 hover:text-white'}`}
+              className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all flex items-center gap-2.5 ${currentTab === 'provincial' ? 'bg-emerald-500 text-black shadow-md' : 'text-slate-400 hover:text-white'}`}
             >
-              <Building2 size={13} /> Analisis Provinsi
+              <Building2 size={13} /> {isKabkoRoute ? 'Analisis Kabkota' : 'Analisis Provinsi'}
             </button>
           </nav>
 
@@ -319,12 +481,12 @@ const App = () => {
                 <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-emerald-400">Personal Health Analytics</span>
               </div>
               
-              <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4 bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent italic leading-tight">
-                LAPORAN ERGONOMI.
+              <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4 bg-gradient-to-b from-white via-white to-white/40 bg-clip-text text-transparent italic leading-tight uppercase">
+                Laporan {isKabkoRoute ? 'Kabkota' : 'Provinsi'}.
               </h1>
               
               <p className="text-sm md:text-base text-slate-400 max-w-xl mx-auto font-light mb-8">
-                Masukkan nama lengkap Anda di kolom pencarian untuk melihat hasil analisis Nordic Body Map (NBM) dan Rapid Office Strain Assessment (ROSA).
+                Cari nama pegawai {isKabkoRoute ? 'BPS Kabupaten/Kota' : 'BPS Provinsi Sultra'} untuk memuat hasil survei ergonomi personal.
               </p>
 
               {/* Search Box */}
@@ -374,7 +536,9 @@ const App = () => {
                         >
                           <div>
                             <div className="text-sm font-bold text-slate-200 group-hover:text-emerald-400 transition-colors">{emp.nama}</div>
-                            <div className="text-[10px] font-mono text-slate-500 uppercase mt-0.5">{emp.bagian} &bull; {emp.usia}</div>
+                            <div className="text-[10px] font-mono text-slate-500 uppercase mt-0.5">
+                              {isKabkoRoute ? emp.satker : emp.bagian} &bull; {emp.usia}
+                            </div>
                           </div>
                           <div className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase ${emp.rosa_category === 'Risiko Tinggi' ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
                             {emp.rosa_category}
@@ -404,7 +568,14 @@ const App = () => {
                       <div className="text-center md:text-left">
                         <h2 className="text-2xl md:text-3xl font-black tracking-tight">{selectedEmployee.nama}</h2>
                         <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
-                          <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-emerald-400 font-mono uppercase">{selectedEmployee.bagian}</span>
+                          <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-emerald-400 font-mono uppercase">
+                            {isKabkoRoute ? selectedEmployee.satker : `Bagian: ${selectedEmployee.bagian}`}
+                          </span>
+                          {isKabkoRoute && (
+                            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs font-semibold text-slate-400 font-mono">
+                              Bagian: {selectedEmployee.bagian}
+                            </span>
+                          )}
                           <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400">{selectedEmployee.gender}</span>
                           <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-xs text-slate-400">{selectedEmployee.usia}</span>
                         </div>
@@ -550,11 +721,11 @@ const App = () => {
                             {/* Data Path */}
                             {radarPath && (
                               <path
-                                d={radarPath}
-                                fill="rgba(16,185,129,0.15)"
-                                stroke="#10b981"
-                                strokeWidth="2.5"
-                                className="transition-all duration-1000"
+                                  d={radarPath}
+                                  fill="rgba(16,185,129,0.15)"
+                                  stroke="#10b981"
+                                  strokeWidth="2.5"
+                                  className="transition-all duration-1000"
                               />
                             )}
                             {/* Points */}
@@ -657,7 +828,7 @@ const App = () => {
                 <section className="relative z-10 max-w-5xl mx-auto px-6 py-8">
                   <div className="p-8 md:p-12 bg-emerald-500/5 rounded-[4rem] border border-emerald-500/10">
                     <div className="flex items-center gap-3 mb-8">
-                      <Thermometer className="text-emerald-500" />
+                      <Monitor className="text-emerald-500" />
                       <h3 className="text-2xl font-bold">Faktor Risiko Workstation & Solusi</h3>
                     </div>
 
@@ -707,23 +878,27 @@ const App = () => {
                   <User size={64} className="text-slate-600 mx-auto mb-6" />
                   <h3 className="text-2xl font-bold mb-2">Cari Nama Pegawai</h3>
                   <p className="text-slate-400 max-w-md mx-auto text-sm">
-                    Gunakan kolom pencarian di atas untuk memasukkan nama pegawai dan membuka laporan ergonomi detailnya.
+                    Gunakan kolom pencarian di atas untuk memasukkan nama pegawai {isKabkoRoute ? 'BPS Kabupaten/Kota' : 'BPS Provinsi Sultra'} dan membuka laporan ergonomi detailnya.
                   </p>
                 </div>
               </section>
             )}
           </>
         ) : (
-          /* TAB 2: PROVINCIAL ANALYSIS DASHBOARD */
-          <section className="max-w-6xl mx-auto px-6 py-8">
+          /* TAB 2: AGGREGATE DASHBOARD VIEW (PROVINSI or KABKO) */
+          <section className="max-w-6xl mx-auto px-6 py-8 animate-fade-in">
             
             {/* Header */}
             <div className="text-center md:text-left mb-10">
               <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 bg-emerald-500/10 border border-emerald-500/20 rounded-full text-emerald-400 text-[10px] font-bold tracking-widest uppercase">
-                <Building2 size={12} /> Laporan Provinsi Sultra
+                <Building2 size={12} /> {isKabkoRoute ? 'Analisis Tingkat Kabupaten/Kota' : 'Analisis Tingkat Provinsi'}
               </div>
-              <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-2">DASHBOARD ERGONOMI PROVINSI</h2>
-              <p className="text-sm text-slate-400">Analisis agregat data kondisi ergonomi pegawai Badan Pusat Statistik se-Provinsi Sulawesi Tenggara.</p>
+              <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-2 uppercase">
+                DASHBOARD ERGONOMI {isKabkoRoute ? 'KABKOTA' : 'PROVINSI'}
+              </h2>
+              <p className="text-sm text-slate-400">
+                Analisis statistik komparatif dan pemetaan risiko ergonomi untuk seluruh pegawai {isKabkoRoute ? 'BPS Kabupaten/Kota se-Sulawesi Tenggara' : 'BPS Provinsi Sulawesi Tenggara'}.
+              </p>
             </div>
 
             {/* Executive Summary Cards */}
@@ -734,7 +909,7 @@ const App = () => {
                 <div>
                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Responden Diuji</div>
                   <div className="text-3xl font-black text-white mt-1">{totalEmployees} <span className="text-xs text-slate-500 font-normal">Pegawai</span></div>
-                  <div className="text-[10px] text-emerald-400 font-mono mt-1">100% Data BPS Sultra</div>
+                  <div className="text-[10px] text-emerald-400 font-mono mt-1">100% Data Valid</div>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-emerald-500/10 flex items-center justify-center border border-emerald-500/20 text-emerald-400 shrink-0">
                   <Users size={20} />
@@ -837,6 +1012,48 @@ const App = () => {
 
             </div>
 
+            {/* Satker Comparison Table (KABKO Route Only) */}
+            {isKabkoRoute && data.statistics.satker_stats && data.statistics.satker_stats.length > 0 && (
+              <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5 mb-8">
+                <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
+                  <Building2 size={18} className="text-emerald-400" /> Profil Risiko Ergonomi per Kabupaten/Kota
+                </h3>
+                <p className="text-xs text-slate-500 mb-6">Peta kerentanan ergonomi tiap kantor BPS Kabupaten/Kota yang diurutkan berdasarkan rerata skor ROSA (Kondisi workstation).</p>
+                
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="border-b border-white/10 text-slate-500 text-xs uppercase font-bold tracking-wider">
+                        <th className="pb-3 pr-4">Satuan Kerja (Satker)</th>
+                        <th className="pb-3 px-4">Jumlah Pegawai</th>
+                        <th className="pb-3 px-4">Rerata NBM</th>
+                        <th className="pb-3 px-4">Rerata ROSA</th>
+                        <th className="pb-3 pl-4 text-right">Tingkat Risiko Rata-rata</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-white/5 text-sm">
+                      {data.statistics.satker_stats.map((item, idx) => {
+                        const isHighRisk = item.avg_rosa >= 5.0;
+                        return (
+                          <tr key={idx} className="hover:bg-white/5 transition-colors">
+                            <td className="py-4 pr-4 font-bold text-white">{item.satker}</td>
+                            <td className="py-4 px-4 font-mono text-slate-300">{item.count} orang</td>
+                            <td className="py-4 px-4 font-mono text-slate-300">{item.avg_nbm}</td>
+                            <td className="py-4 px-4 font-mono text-slate-300">{item.avg_rosa}</td>
+                            <td className="py-4 pl-4 text-right">
+                              <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${isHighRisk ? 'bg-rose-500/10 text-rose-400 border border-rose-500/20' : 'bg-amber-500/10 text-amber-400 border border-amber-500/20'}`}>
+                                {isHighRisk ? 'Risiko Tinggi' : 'Risiko Sedang'}
+                              </span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+
             {/* Pain Areas & Risk Factors */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
               
@@ -896,12 +1113,12 @@ const App = () => {
 
             </div>
 
-            {/* Department Comparison Table */}
+            {/* Department Comparison Table (Non-KABKO or sub breakdown) */}
             <div className="p-8 rounded-[2rem] bg-slate-900/30 border border-white/5 mb-8">
               <h3 className="text-lg font-bold mb-6 flex items-center gap-2">
-                <Building2 size={18} className="text-emerald-400" /> Perbandingan Risiko Ergonomi per Bagian
+                <Building2 size={18} className="text-emerald-400" /> Perbandingan Risiko Ergonomi per Bagian Kerja
               </h3>
-              <p className="text-xs text-slate-500 mb-6">Peta kerentanan ergonomi tiap bagian kerja yang diurutkan berdasarkan rerata skor ROSA (Kondisi workstation).</p>
+              <p className="text-xs text-slate-500 mb-6">Peta kerentanan ergonomi tiap divisi/bagian kerja (Umum, Nerwilis, IPDS, Sosial, dsb) diurutkan berdasarkan rerata skor ROSA.</p>
               
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
@@ -936,14 +1153,14 @@ const App = () => {
               </div>
             </div>
 
-            {/* Provincial Recommendations */}
+            {/* Recommendations */}
             <div className="p-8 md:p-12 bg-emerald-500/5 rounded-[4rem] border border-emerald-500/10">
               <div className="flex items-center gap-3 mb-6">
                 <ShieldCheck className="text-emerald-500" />
-                <h3 className="text-2xl font-bold">Rekomendasi Kebijakan BPS Provinsi Sultra</h3>
+                <h3 className="text-2xl font-bold">Rekomendasi Kebijakan Mitigasi Ergonomi</h3>
               </div>
               <p className="text-xs text-slate-400 mb-8 leading-relaxed">
-                Berdasarkan data analisis ergonomi dari {totalEmployees} responden pegawai BPS se-Sulawesi Tenggara, berikut adalah langkah mitigasi yang sangat disarankan untuk pimpinan:
+                Berdasarkan data analisis ergonomi dari {totalEmployees} responden pegawai se-Sulawesi Tenggara, berikut adalah langkah mitigasi yang disarankan untuk jajaran pimpinan:
               </p>
 
               <div className="space-y-6">
@@ -955,7 +1172,7 @@ const App = () => {
                   <div>
                     <h4 className="text-base font-bold text-white mb-1">Standarisasi Kursi Ergonomis Kerja</h4>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                      Sebesar **{data.statistics.risk_factor_stats.find(r => r.factor.includes("Kursi"))?.percentage || "80"}%** pegawai memiliki kursi yang ketinggiannya tidak dapat diatur dengan baik. Direkomendasikan pengadaan kursi dengan fitur hidrolik penyesuai tinggi serta sandaran tangan yang bisa diatur untuk menyelaraskan postur mengetik siku-bahu.
+                      Sebesar **{data.statistics.risk_factor_stats.find(r => r.factor.includes("Kursi"))?.percentage || "80"}%** pegawai memiliki kursi yang ketinggiannya statis. Direkomendasikan pengadaan kursi dengan tuas hidrolik penyesuai tinggi serta sandaran tangan yang bisa diatur untuk menyelaraskan postur siku-bahu.
                     </p>
                   </div>
                 </div>
@@ -968,7 +1185,7 @@ const App = () => {
                   <div>
                     <h4 className="text-base font-bold text-white mb-1">Penyesuaian Ketinggian Monitor Layar</h4>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                      Lebih dari **50%** pegawai mengalami keluhan nyeri leher karena letak monitor yang tidak sejajar mata. Disarankan untuk membagikan stand monitor tambahan atau melatih pegawai mengatur sudut kemiringan monitor agar pas setinggi mata.
+                      Lebih dari **50%** pegawai mengalami keluhan nyeri leher akibat letak monitor yang terlampau rendah. Disarankan penyediaan stand monitor tambahan atau melatih pegawai mengatur sudut kemiringan monitor agar sejajar mata.
                     </p>
                   </div>
                 </div>
@@ -979,9 +1196,9 @@ const App = () => {
                     <Activity size={18} />
                   </div>
                   <div>
-                    <h4 className="text-base font-bold text-white mb-1">Implementasi Program Peregangan Berkala (Stretching)</h4>
+                    <h4 className="text-base font-bold text-white mb-1">Implementasi Stretching Massal Terjadwal</h4>
                     <p className="text-xs text-slate-400 leading-relaxed">
-                      Keluhan tertinggi ada pada area **{data.statistics.body_pain_stats[0]?.area || "Pinggang / Punggung Bawah"} ({data.statistics.body_pain_stats[0]?.percentage || "75"}%)** karena durasi duduk yang panjang tanpa jeda. Manajemen perlu menerapkan alarm peregangan otomatis secara massal pada aplikasi internal BPS setiap pukul 10:00 dan 14:00 WITA.
+                      Keluhan tertinggi terdeteksi pada area **{data.statistics.body_pain_stats[0]?.area || "Pinggang / Punggung Bawah"} ({data.statistics.body_pain_stats[0]?.percentage || "75"}%)** karena durasi duduk tanpa jeda. Manajemen perlu menerapkan pengingat peregangan massal di seluruh unit kerja setiap pukul 10:00 dan 14:00 WITA.
                     </p>
                   </div>
                 </div>
@@ -996,7 +1213,7 @@ const App = () => {
       {/* Footer */}
       <footer className="relative z-10 py-12 text-center text-slate-600 text-xs border-t border-white/5 mt-12">
         <p>Laporan ini dihasilkan secara otomatis menggunakan Data-Driven Ergonomic Analysis v2.0</p>
-        <p className="mt-2 tracking-widest uppercase">Badan Pusat Statistik Provinsi Sulawesi Tenggara &copy; 2026</p>
+        <p className="mt-2 tracking-widest uppercase">Badan Pusat Statistik Sulawesi Tenggara &copy; 2026</p>
       </footer>
 
     </div>
