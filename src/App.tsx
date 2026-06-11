@@ -176,11 +176,6 @@ const App = () => {
       .then((jsonData: ErgonomicData) => {
         setData(jsonData);
         setLoading(false);
-        if (jsonData.employees && jsonData.employees.length > 0) {
-          // Select La Ode Haerul Saleh Wahid as default, or first employee
-          const defaultEmp = jsonData.employees.find(e => e.nama.toLowerCase().includes('haerul')) || jsonData.employees[0];
-          setSelectedEmployee(defaultEmp);
-        }
       })
       .catch(err => {
         console.error("Failed to load ergonomic data:", err);
