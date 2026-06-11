@@ -317,19 +317,20 @@ const App = () => {
   if (hash !== '#/provinsi' && hash !== '#/kabkota') {
     /* MAIN PORTAL LANDING PAGE */
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-sky-50 text-slate-800 font-sans selection:bg-blue-600 selection:text-white flex flex-col justify-between relative overflow-hidden">
+      <div className="min-h-screen bg-gradient-to-br from-pink-50/15 via-white to-sky-50 text-slate-800 font-sans selection:bg-blue-600 selection:text-white flex flex-col justify-between relative overflow-hidden">
 
         {/* Colorful Background Blobs */}
         <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
           <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[60%] rounded-full bg-blue-200/40 blur-[130px]" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-sky-200/50 blur-[120px]" />
+          <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] rounded-full bg-pink-200/35 blur-[120px] animate-pulse" style={{ animationDuration: '8s' }} />
           <div className="absolute top-[40%] left-[30%] w-[30%] h-[30%] rounded-full bg-cyan-100/60 blur-[100px]" />
+          <div className="absolute top-[15%] right-[10%] w-[35%] h-[35%] rounded-full bg-pink-100/40 blur-[110px]" />
         </div>
 
         {/* Portal Header */}
         <header className="relative z-10 px-8 py-6 max-w-6xl mx-auto w-full flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-sky-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/30">
               <Activity size={20} className="text-white font-black" />
             </div>
             <div>
@@ -349,10 +350,10 @@ const App = () => {
               </span>
               <span className="text-[10px] uppercase tracking-[0.3em] font-black text-blue-700">Ergonomic Health Portal</span>
             </div>
-            <h1 className="text-4xl md:text-7xl font-black tracking-tight mb-4 leading-none italic bg-gradient-to-b from-blue-800 to-blue-500 bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-7xl font-black tracking-tight mb-4 leading-none italic bg-gradient-to-r from-blue-700 via-indigo-600 to-pink-500 bg-clip-text text-transparent">
               DellCare.
             </h1>
-            <h2 className="text-lg md:text-xl font-bold tracking-tight mb-6 text-sky-600 font-mono uppercase">
+            <h2 className="text-lg md:text-xl font-bold tracking-tight mb-6 bg-gradient-to-r from-blue-600 to-pink-500 bg-clip-text text-transparent font-mono uppercase">
               Analisis Kondisi Ergonomi Pegawai
             </h2>
             <p className="text-base text-slate-500 font-light leading-relaxed mb-6">
@@ -390,12 +391,12 @@ const App = () => {
             {/* Card 2: Kabkota */}
             <a
               href="#/kabkota"
-              className="group p-8 md:p-10 rounded-[3rem] bg-gradient-to-br from-sky-50/80 via-white to-white border border-sky-100 hover:border-sky-300 hover:shadow-[0_20px_50px_rgba(14,165,233,0.12)] shadow-md transition-all duration-300 flex flex-col justify-between text-left relative overflow-hidden"
+              className="group p-8 md:p-10 rounded-[3rem] bg-gradient-to-br from-pink-50/60 via-white to-white border border-pink-100 hover:border-pink-300 hover:shadow-[0_20px_50px_rgba(236,72,153,0.12)] shadow-md transition-all duration-300 flex flex-col justify-between text-left relative overflow-hidden"
             >
-              <div className="absolute top-0 right-0 w-40 h-40 bg-sky-200/30 rounded-full blur-2xl group-hover:bg-sky-200/50 transition-all" />
-              <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-cyan-100/40 rounded-full blur-xl" />
+              <div className="absolute top-0 right-0 w-40 h-40 bg-pink-200/30 rounded-full blur-2xl group-hover:bg-pink-200/50 transition-all" />
+              <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-purple-100/30 rounded-full blur-xl" />
               <div>
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-sky-500 to-cyan-600 flex items-center justify-center text-white mb-8 shadow-lg shadow-sky-500/30 group-hover:scale-110 transition-all">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-white mb-8 shadow-lg shadow-pink-500/30 group-hover:scale-110 transition-all">
                   <Users size={24} />
                 </div>
                 <h3 className="text-2xl font-black text-slate-900 mb-2">BPS Kabupaten/Kota</h3>
@@ -403,7 +404,7 @@ const App = () => {
                   Laporan ergonomi personal dan dashboard analisis pemetaan risiko komparatif untuk seluruh pegawai **BPS Kabupaten/Kota se-Sulawesi Tenggara**.
                 </p>
               </div>
-              <div className="mt-12 flex items-center gap-3 font-bold text-sm text-sky-600 group-hover:text-sky-800 transition-colors">
+              <div className="mt-12 flex items-center gap-3 font-bold text-sm text-pink-600 group-hover:text-pink-800 transition-colors">
                 Buka Analisis Kabupaten/Kota <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
               </div>
             </a>
@@ -492,7 +493,7 @@ const App = () => {
   const highRiskPercentage = ((totalHighRisk / totalEmployees) * 100).toFixed(1);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50/60 via-white to-sky-50/40 text-slate-800 font-sans selection:bg-blue-600 selection:text-white">
+    <div className="min-h-screen bg-gradient-to-br from-pink-50/15 via-white to-sky-50/40 text-slate-800 font-sans selection:bg-blue-600 selection:text-white">
 
       {/* Background Parallax Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden z-0">
@@ -501,8 +502,12 @@ const App = () => {
           style={{ transform: `translate(${scrollY * 0.05}px, ${scrollY * 0.02}px)` }}
         />
         <div
-          className="absolute top-[40%] -right-[10%] w-[40%] h-[40%] rounded-full bg-sky-200/40 blur-[100px]"
+          className="absolute top-[40%] -right-[10%] w-[40%] h-[40%] rounded-full bg-pink-200/25 blur-[100px]"
           style={{ transform: `translate(-${scrollY * 0.02}px, -${scrollY * 0.05}px)` }}
+        />
+        <div
+          className="absolute top-[15%] right-[20%] w-[35%] h-[35%] rounded-full bg-purple-100/20 blur-[110px]"
+          style={{ transform: `translate(${scrollY * 0.03}px, -${scrollY * 0.03}px)` }}
         />
         <div className="absolute bottom-0 left-[20%] w-[30%] h-[30%] rounded-full bg-cyan-100/30 blur-[80px]" />
       </div>
@@ -521,7 +526,7 @@ const App = () => {
             </button>
             <div className="h-5 w-[1px] bg-blue-100 shrink-0" />
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-sky-600 flex items-center justify-center shadow-md shadow-blue-500/30 shrink-0">
+              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center shadow-md shadow-indigo-500/30 shrink-0">
                 <Activity size={18} className="text-white font-black" />
               </div>
               <div className="hidden xs:block">
@@ -534,20 +539,20 @@ const App = () => {
           <nav className="flex items-center gap-1 bg-blue-50/80 p-1 rounded-xl border border-blue-100 shrink-0">
             <button
               onClick={() => setCurrentTab('personal')}
-              className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all flex items-center gap-2.5 ${currentTab === 'personal' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'text-slate-500 hover:text-blue-700'}`}
+              className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all flex items-center gap-2.5 ${currentTab === 'personal' ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white shadow-md shadow-indigo-500/25' : 'text-slate-500 hover:text-blue-700'}`}
             >
               <User size={13} /> Laporan Personal
             </button>
             <button
               onClick={() => setCurrentTab('provincial')}
-              className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all flex items-center gap-2.5 ${currentTab === 'provincial' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'text-slate-500 hover:text-blue-700'}`}
+              className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all flex items-center gap-2.5 ${currentTab === 'provincial' ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white shadow-md shadow-indigo-500/25' : 'text-slate-500 hover:text-blue-700'}`}
             >
               <Building2 size={13} /> {isKabkoRoute ? 'Analisis Kabkota' : 'Analisis Provinsi'}
             </button>
             {isKabkoRoute && (
               <button
                 onClick={() => setCurrentTab('satker')}
-                className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all flex items-center gap-2.5 ${currentTab === 'satker' ? 'bg-blue-600 text-white shadow-md shadow-blue-500/30' : 'text-slate-500 hover:text-blue-700'}`}
+                className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all flex items-center gap-2.5 ${currentTab === 'satker' ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white shadow-md shadow-indigo-500/25' : 'text-slate-500 hover:text-blue-700'}`}
               >
                 <Building2 size={13} /> Analisis Per Kabkota
               </button>
@@ -575,7 +580,7 @@ const App = () => {
                     <span className="text-[10px] uppercase tracking-[0.3em] font-bold text-blue-700">Personal Health Analytics</span>
                   </div>
 
-                  <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4 bg-gradient-to-b from-blue-800 to-blue-500 bg-clip-text text-transparent italic leading-tight uppercase">
+                  <h1 className="text-4xl md:text-6xl font-black tracking-tight mb-4 bg-gradient-to-r from-blue-700 via-indigo-600 to-pink-500 bg-clip-text text-transparent italic leading-tight uppercase">
                     Laporan {isKabkoRoute ? 'Kabkota' : 'Provinsi'}.
                   </h1>
 
@@ -656,7 +661,7 @@ const App = () => {
                     <section className="relative z-10 max-w-5xl mx-auto px-6 mb-8">
                       <div className="p-6 md:p-8 rounded-[2rem] bg-white border border-blue-100 shadow-md shadow-blue-100/50 flex flex-col md:flex-row items-center md:items-stretch justify-between gap-6">
                         <div className="flex items-center gap-5">
-                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 to-sky-500 flex items-center justify-center shadow-lg shadow-blue-500/25 shrink-0">
+                          <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 via-indigo-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
                             <User size={32} className="text-white" />
                           </div>
                           <div className="text-center md:text-left">
@@ -871,9 +876,9 @@ const App = () => {
                       </div>
                     </section>
 
-                    {/* Nordic Body Map 28-point details — DEEP BLUE SECTION */}
+                    {/* Nordic Body Map 28-point details — DEEP VIBRANT SECTION */}
                     <section className="relative z-10 max-w-5xl mx-auto px-6 py-4">
-                      <div className="p-8 md:p-10 rounded-[2.5rem] bg-gradient-to-b from-blue-800 to-indigo-900 border border-blue-700/50 shadow-xl shadow-blue-900/30">
+                      <div className="p-8 md:p-10 rounded-[2.5rem] bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-950 border border-blue-800/50 shadow-xl shadow-indigo-950/40">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                           <div>
                             <h3 className="text-2xl font-bold text-white">Rincian 28 Titik Keluhan Tubuh (NBM)</h3>
@@ -1002,7 +1007,7 @@ const App = () => {
                   <div className="inline-flex items-center gap-2 mb-3 px-3 py-1 bg-blue-50 border border-blue-200 rounded-full text-blue-700 text-[10px] font-bold tracking-widest uppercase shadow-sm">
                     <Building2 size={12} /> {isKabkoRoute ? 'Analisis Tingkat Kabupaten/Kota' : 'Analisis Tingkat Provinsi'}
                   </div>
-                  <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-2 text-slate-900 uppercase">
+                  <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-2 bg-gradient-to-r from-blue-700 via-indigo-600 to-pink-500 bg-clip-text text-transparent uppercase font-black">
                     DASHBOARD ERGONOMI {isKabkoRoute ? 'KABKOTA' : 'PROVINSI'}
                   </h2>
                   <p className="text-sm text-slate-500">
@@ -1085,7 +1090,7 @@ const App = () => {
                             </div>
                             <div className="h-2.5 bg-blue-50 rounded-full overflow-hidden border border-blue-100">
                               <div
-                                className="h-full bg-gradient-to-r from-blue-500 to-sky-400 rounded-full"
+                                className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-pink-500 rounded-full"
                                 style={{ width: `${percentage}%` }}
                               />
                             </div>
@@ -1115,7 +1120,7 @@ const App = () => {
                             </div>
                             <div className="h-2.5 bg-rose-50 rounded-full overflow-hidden border border-rose-100">
                               <div
-                                className={`h-full rounded-full ${isHigh ? 'bg-gradient-to-r from-rose-500 to-rose-400' : 'bg-gradient-to-r from-amber-400 to-amber-300'}`}
+                                className={`h-full rounded-full ${isHigh ? 'bg-gradient-to-r from-rose-500 to-pink-500' : 'bg-gradient-to-r from-amber-400 to-amber-300'}`}
                                 style={{ width: `${percentage}%` }}
                               />
                             </div>
@@ -1196,7 +1201,7 @@ const App = () => {
                           </div>
                           <div className="h-2 bg-blue-50 rounded-full overflow-hidden">
                             <div
-                              className="h-full bg-gradient-to-r from-blue-500 to-sky-400 rounded-full"
+                              className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-pink-500 rounded-full"
                               style={{ width: `${item.percentage}%` }}
                             />
                           </div>
@@ -1224,9 +1229,9 @@ const App = () => {
                             <span className="font-bold text-slate-700">#{idx + 1} {item.factor}</span>
                             <span className="text-rose-600 font-mono font-bold">{item.percentage}%</span>
                           </div>
-                          <div className="h-2 bg-rose-50 rounded-full overflow-hidden">
+                          <div className="h-2 bg-rose-50/50 rounded-full overflow-hidden border border-rose-100/50">
                             <div
-                              className="h-full bg-gradient-to-r from-rose-500 to-amber-400 rounded-full"
+                              className="h-full bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400 rounded-full"
                               style={{ width: `${item.percentage}%` }}
                             />
                           </div>
@@ -1456,7 +1461,7 @@ const App = () => {
                             </div>
                             <div className="h-2 bg-blue-50 rounded-full overflow-hidden">
                               <div
-                                className="h-full bg-gradient-to-r from-blue-500 to-sky-400 rounded-full"
+                                className="h-full bg-gradient-to-r from-blue-500 via-indigo-500 to-pink-500 rounded-full"
                                 style={{ width: `${item.percentage}%` }}
                               />
                             </div>
@@ -1486,9 +1491,9 @@ const App = () => {
                               <span className="font-bold text-slate-700">#{idx + 1} {item.factor}</span>
                               <span className="text-rose-600 font-mono font-bold">{item.percentage}%</span>
                             </div>
-                            <div className="h-2 bg-rose-50 rounded-full overflow-hidden">
+                            <div className="h-2 bg-rose-50/50 rounded-full overflow-hidden border border-rose-100/50">
                               <div
-                                className="h-full bg-gradient-to-r from-rose-500 to-amber-400 rounded-full"
+                                className="h-full bg-gradient-to-r from-rose-500 via-pink-500 to-amber-400 rounded-full"
                                 style={{ width: `${item.percentage}%` }}
                               />
                             </div>

@@ -47,6 +47,14 @@
     background-clip: text;
   }
 
+  /* Vibrant pink/purple gradient text utility */
+  .text-gradient-vibrant {
+    background: linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
   /* Glass card effect */
   .glass-card {
     background: rgba(255, 255, 255, 0.85);
