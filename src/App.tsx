@@ -359,7 +359,7 @@ const App = () => {
             <p className="text-base text-slate-500 font-light leading-relaxed mb-6">
               Selamat datang di portal analisis kondisi ergonomi pegawai Badan Pusat Statistik se-Provinsi Sulawesi Tenggara. Pilih lingkup satuan kerja di bawah ini:
             </p>
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-blue-50 border border-blue-100 text-[9px] md:text-xs text-blue-600 font-mono text-center mb-8">
+            <div className="flex flex-wrap items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-50 border border-blue-100 text-[9px] md:text-xs text-blue-600 font-mono text-center mb-8 max-w-full">
               <span>🚀</span>
               <span>Proker Analisis Kesehatan Masyarakat Magang Hub Batch 3 BPS Provinsi Sultra - Delima Yulia Hartati S.KM</span>
             </div>
@@ -513,7 +513,7 @@ const App = () => {
       </div>
 
       {/* Floating Modern Header / Nav */}
-      <header className="fixed top-0 left-0 right-0 z-50 px-6 py-4">
+      <header className="fixed top-0 left-0 right-0 z-50 px-4 py-3 sm:px-6 sm:py-4">
         <div className="max-w-6xl mx-auto flex items-center justify-between px-4 md:px-6 py-3 rounded-2xl bg-white/90 border border-blue-100 shadow-lg shadow-blue-100/50 backdrop-blur-lg">
 
           <div className="flex items-center gap-3">
@@ -536,7 +536,8 @@ const App = () => {
             </div>
           </div>
 
-          <nav className="flex items-center gap-1 bg-blue-50/80 p-1 rounded-xl border border-blue-100 shrink-0">
+          {/* Top navigation - hidden on mobile, shown on desktop */}
+          <nav className="hidden md:flex items-center gap-1 bg-blue-50/80 p-1 rounded-xl border border-blue-100 shrink-0">
             <button
               onClick={() => setCurrentTab('personal')}
               className={`px-3 md:px-4 py-1.5 rounded-lg text-[10px] md:text-xs font-bold transition-all flex items-center gap-2.5 ${currentTab === 'personal' ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white shadow-md shadow-indigo-500/25' : 'text-slate-500 hover:text-blue-700'}`}
@@ -562,8 +563,37 @@ const App = () => {
         </div>
       </header>
 
+      {/* Floating Bottom Nav for Mobile - hidden on desktop, shown on mobile */}
+      <div className="md:hidden fixed bottom-6 left-4 right-4 z-50">
+        <nav className="flex items-center justify-around bg-white/95 border border-blue-100 p-2 rounded-2xl shadow-xl shadow-blue-100/50 backdrop-blur-lg max-w-lg mx-auto">
+          <button
+            onClick={() => setCurrentTab('personal')}
+            className={`flex-1 py-2 rounded-xl text-[10px] font-bold transition-all flex flex-col items-center justify-center gap-1 ${currentTab === 'personal' ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white shadow-md shadow-indigo-500/25' : 'text-slate-500 hover:text-blue-750'}`}
+          >
+            <User size={18} />
+            <span>Personal</span>
+          </button>
+          <button
+            onClick={() => setCurrentTab('provincial')}
+            className={`flex-1 py-2 rounded-xl text-[10px] font-bold transition-all flex flex-col items-center justify-center gap-1 ${currentTab === 'provincial' ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white shadow-md shadow-indigo-500/25' : 'text-slate-500 hover:text-blue-750'}`}
+          >
+            <Building2 size={18} />
+            <span>{isKabkoRoute ? 'Kabkota' : 'Provinsi'}</span>
+          </button>
+          {isKabkoRoute && (
+            <button
+              onClick={() => setCurrentTab('satker')}
+              className={`flex-1 py-2 rounded-xl text-[10px] font-bold transition-all flex flex-col items-center justify-center gap-1 ${currentTab === 'satker' ? 'bg-gradient-to-r from-blue-600 to-pink-500 text-white shadow-md shadow-indigo-500/25' : 'text-slate-500 hover:text-blue-750'}`}
+            >
+              <Activity size={18} />
+              <span>Satker</span>
+            </button>
+          )}
+        </nav>
+      </div>
+
       {/* Main Container */}
-      <main className="pt-24 min-h-screen relative z-10">
+      <main className="pt-24 pb-28 md:pb-12 min-h-screen relative z-10">
 
         {(() => {
           if (currentTab === 'personal') {
@@ -660,13 +690,13 @@ const App = () => {
                     {/* Employee Info Header */}
                     <section className="relative z-10 max-w-5xl mx-auto px-6 mb-8">
                       <div className="p-6 md:p-8 rounded-[2rem] bg-white border border-blue-100 shadow-md shadow-blue-100/50 flex flex-col md:flex-row items-center md:items-stretch justify-between gap-6">
-                        <div className="flex items-center gap-5">
+                        <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
                           <div className="w-16 h-16 rounded-2xl bg-gradient-to-tr from-blue-500 via-indigo-500 to-pink-500 flex items-center justify-center shadow-lg shadow-indigo-500/25 shrink-0">
                             <User size={32} className="text-white" />
                           </div>
-                          <div className="text-center md:text-left">
+                          <div className="text-center sm:text-left">
                             <h2 className="text-2xl md:text-3xl font-black tracking-tight text-slate-900">{selectedEmployee.nama}</h2>
-                            <div className="flex flex-wrap justify-center md:justify-start gap-2 mt-2">
+                            <div className="flex flex-wrap justify-center sm:justify-start gap-2 mt-2">
                               <span className="px-3 py-1 rounded-full bg-blue-50 border border-blue-100 text-xs font-semibold text-blue-700 font-mono uppercase">
                                 {isKabkoRoute ? selectedEmployee.satker : `Bagian: ${selectedEmployee.bagian}`}
                               </span>
@@ -757,7 +787,7 @@ const App = () => {
 
                     {/* Radar Chart & Major Pain Groups — VIBRANT BLUE SECTION */}
                     <section className="relative z-10 max-w-5xl mx-auto px-6 py-8">
-                      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-[3rem] p-8 md:p-12 overflow-hidden relative shadow-2xl shadow-blue-800/30">
+                      <div className="bg-gradient-to-br from-blue-600 via-blue-700 to-indigo-800 rounded-3xl md:rounded-[3rem] p-6 md:p-12 overflow-hidden relative shadow-2xl shadow-blue-800/30">
                         {/* Decorative orbs */}
                         <div className="absolute -top-10 -right-10 w-40 h-40 bg-sky-400/20 rounded-full blur-2xl pointer-events-none" />
                         <div className="absolute -bottom-10 -left-10 w-40 h-40 bg-indigo-400/20 rounded-full blur-2xl pointer-events-none" />
@@ -798,7 +828,7 @@ const App = () => {
                           <div className="lg:col-span-5 flex justify-center">
                             {/* Radar Chart SVG */}
                             <div className="relative">
-                              <svg width="280" height="280" viewBox="0 0 300 300" className="drop-shadow-[0_0_25px_rgba(125,211,252,0.25)]">
+                              <svg viewBox="0 0 300 300" className="w-full max-w-[280px] h-auto drop-shadow-[0_0_25px_rgba(125,211,252,0.25)]">
                                 {/* Background Circles */}
                                 {[0.33, 0.66, 1].map((step, i) => (
                                   <circle
@@ -878,7 +908,7 @@ const App = () => {
 
                     {/* Nordic Body Map 28-point details — DEEP VIBRANT SECTION */}
                     <section className="relative z-10 max-w-5xl mx-auto px-6 py-4">
-                      <div className="p-8 md:p-10 rounded-[2.5rem] bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-950 border border-blue-800/50 shadow-xl shadow-indigo-950/40">
+                      <div className="p-6 md:p-10 rounded-3xl md:rounded-[2.5rem] bg-gradient-to-br from-blue-900 via-indigo-900 to-purple-950 border border-blue-800/50 shadow-xl shadow-indigo-950/40">
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
                           <div>
                             <h3 className="text-2xl font-bold text-white">Rincian 28 Titik Keluhan Tubuh (NBM)</h3>
@@ -934,7 +964,7 @@ const App = () => {
 
                     {/* Major Workstation Setup Issues & Solutions */}
                     <section className="relative z-10 max-w-5xl mx-auto px-6 py-8">
-                      <div className="p-8 md:p-12 bg-gradient-to-br from-blue-50 via-white to-sky-50 rounded-[4rem] border border-blue-100 shadow-md shadow-blue-100/50">
+                      <div className="p-6 md:p-12 bg-gradient-to-br from-blue-50 via-white to-sky-50 rounded-3xl md:rounded-[4rem] border border-blue-100 shadow-md shadow-blue-100/50">
                         <div className="flex items-center gap-3 mb-8">
                           <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-sky-600 flex items-center justify-center shadow-md shadow-blue-500/30">
                             <Monitor className="text-white" size={20} />
@@ -946,7 +976,7 @@ const App = () => {
                           <div className="space-y-4">
                             {selectedEmployee.masalah_utama.map((item, idx) => (
                               <div key={idx} className="group grid grid-cols-1 md:grid-cols-12 items-center gap-6 p-6 rounded-3xl bg-white border border-blue-100 hover:border-blue-300 hover:shadow-md hover:shadow-blue-100/60 transition-all">
-                                <div className="md:col-span-1 flex justify-center">
+                                <div className="md:col-span-1 flex justify-start md:justify-center">
                                   <div className="p-3 bg-blue-50 rounded-2xl border border-blue-100">
                                     {getIconComponent(item.icon)}
                                   </div>
@@ -1146,7 +1176,7 @@ const App = () => {
                     <div className="overflow-x-auto">
                       <table className="w-full text-left border-collapse">
                         <thead>
-                          <tr className="border-b border-blue-100 text-slate-500 text-xs uppercase font-bold tracking-wider">
+                          <tr className="border-b border-blue-100 text-slate-500 text-xs uppercase font-bold tracking-wider whitespace-nowrap">
                             <th className="pb-3 pr-4">Satuan Kerja (Satker)</th>
                             <th className="pb-3 px-4">Jumlah Pegawai</th>
                             <th className="pb-3 px-4">Rerata NBM</th>
@@ -1154,7 +1184,7 @@ const App = () => {
                             <th className="pb-3 pl-4 text-right">Tingkat Risiko Rata-rata</th>
                           </tr>
                         </thead>
-                        <tbody className="divide-y divide-blue-50 text-sm">
+                        <tbody className="divide-y divide-blue-50 text-sm whitespace-nowrap">
                           {data.statistics.satker_stats.map((item, idx) => {
                             const isHighRisk = item.avg_rosa >= 5.0;
                             return (
@@ -1258,7 +1288,7 @@ const App = () => {
                   <div className="overflow-x-auto">
                     <table className="w-full text-left border-collapse">
                       <thead>
-                        <tr className="border-b border-blue-100 text-slate-500 text-xs uppercase font-bold tracking-wider">
+                        <tr className="border-b border-blue-100 text-slate-500 text-xs uppercase font-bold tracking-wider whitespace-nowrap">
                           <th className="pb-3 pr-4">Nama Bagian</th>
                           <th className="pb-3 px-4">Jumlah Pegawai</th>
                           <th className="pb-3 px-4">Rerata Skor NBM</th>
@@ -1266,7 +1296,7 @@ const App = () => {
                           <th className="pb-3 pl-4 text-right">Tingkat Risiko Workstation</th>
                         </tr>
                       </thead>
-                      <tbody className="divide-y divide-blue-50 text-sm">
+                      <tbody className="divide-y divide-blue-50 text-sm whitespace-nowrap">
                         {data.statistics.department_stats.map((dept, idx) => {
                           const isHighRisk = dept.avg_rosa >= 5.0;
                           return (
@@ -1289,7 +1319,7 @@ const App = () => {
                 </div>
 
                 {/* Recommendations */}
-                <div className="p-8 md:p-12 bg-gradient-to-br from-blue-50 via-white to-sky-50 border border-blue-100 shadow-md shadow-blue-100/40 rounded-[4rem] text-slate-800">
+                <div className="p-6 md:p-12 bg-gradient-to-br from-blue-50 via-white to-sky-50 border border-blue-100 shadow-md shadow-blue-100/40 rounded-3xl md:rounded-[4rem] text-slate-800">
                   <div className="flex items-center gap-3 mb-6">
                     <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-blue-500 to-sky-600 flex items-center justify-center shadow-md shadow-blue-500/30">
                       <ShieldCheck className="text-white" size={20} />
@@ -1376,7 +1406,7 @@ const App = () => {
                     <p className="text-xs text-slate-500 mt-1">Pilih satuan kerja di bawah ini untuk meninjau peta keluhan & risiko ergonomi setempat secara khusus.</p>
                   </div>
 
-                  <div className="relative min-w-[280px] self-center">
+                  <div className="relative w-full md:w-[280px] self-center">
                     <select
                       value={selectedSatker}
                       onChange={(e) => setSelectedSatker(e.target.value)}
